@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist"
   },
-  "homepage": "https://ofekalfasi222-cloud.github.io/bakery-pricing/",
+  "homepage": "https://bakedbynitzan.github.io/bakery-pricing/",
   "dependencies": {
     "firebase": "^12.8.0",
     "react": "^19.2.0",
