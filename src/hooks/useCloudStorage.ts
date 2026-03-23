@@ -3,6 +3,7 @@ import { AppData, PricingSettings } from '../types';
 
 const JSONBIN_API_KEY = '$2a$10$oZfLFV8vjYJgPdjv3gZK9O5OD2tUEsH30F7mZMQh4CDJqtrN3qIfq';
 const JSONBIN_BIN_ID_KEY = 'bakery-jsonbin-id';
+const DEFAULT_BIN_ID = '697fcf97ae596e708f09e8ba';
 const SYNC_INTERVAL = 30000; // סנכרון כל 30 שניות
 
 const defaultSettings: PricingSettings = {
@@ -36,65 +37,36 @@ export function useCloudStorage() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const lastLocalUpdate = useRef<number>(0);
 
-  // יצירת bin חדש או טעינה מקיים
   useEffect(() => {
     const initBin = async () => {
-      const storedBinId = localStorage.getItem(JSONBIN_BIN_ID_KEY);
-      
-      if (storedBinId) {
-        // טעינה מ-bin קיים
-        try {
-          const response = await fetch(`https://api.jsonbin.io/v3/b/${storedBinId}/latest`, {
-            headers: {
-              'X-Master-Key': JSONBIN_API_KEY,
-            },
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            setData({
-              ...defaultData,
-              ...result.record,
-              settings: { ...defaultSettings, ...result.record?.settings },
-            });
-            setBinId(storedBinId);
-          } else {
-            // אם ה-bin לא קיים, ניצור חדש
-            await createNewBin();
-          }
-        } catch (error) {
-          console.error('Error loading data:', error);
-          await createNewBin();
-        }
-      } else {
-        // יצירת bin חדש
-        await createNewBin();
-      }
-      
-      setIsLoaded(true);
-    };
+      const storedBinId = localStorage.getItem(JSONBIN_BIN_ID_KEY) || DEFAULT_BIN_ID;
 
-    const createNewBin = async () => {
       try {
-        const response = await fetch('https://api.jsonbin.io/v3/b', {
-          method: 'POST',
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${storedBinId}/latest`, {
           headers: {
-            'Content-Type': 'application/json',
             'X-Master-Key': JSONBIN_API_KEY,
-            'X-Bin-Name': 'nitzan-bakery-data',
           },
-          body: JSON.stringify(defaultData),
         });
-        
+
         if (response.ok) {
           const result = await response.json();
-          const newBinId = result.metadata.id;
-          localStorage.setItem(JSONBIN_BIN_ID_KEY, newBinId);
-          setBinId(newBinId);
+          setData({
+            ...defaultData,
+            ...result.record,
+            settings: { ...defaultSettings, ...result.record?.settings },
+          });
+          localStorage.setItem(JSONBIN_BIN_ID_KEY, storedBinId);
+          setBinId(storedBinId);
+        } else {
+          console.error('Failed to load bin:', response.status);
+          setBinId(storedBinId);
         }
       } catch (error) {
-        console.error('Error creating bin:', error);
+        console.error('Error loading data:', error);
+        setBinId(storedBinId);
       }
+
+      setIsLoaded(true);
     };
 
     initBin();
