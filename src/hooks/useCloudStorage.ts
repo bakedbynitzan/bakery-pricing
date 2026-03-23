@@ -38,34 +38,55 @@ export function useCloudStorage() {
   const lastLocalUpdate = useRef<number>(0);
 
   useEffect(() => {
+    const loadBin = async (id: string) => {
+      const response = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, {
+        headers: { 'X-Master-Key': JSONBIN_API_KEY },
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      return result.record as AppData | null;
+    };
+
     const initBin = async () => {
-      const storedBinId = localStorage.getItem(JSONBIN_BIN_ID_KEY) || DEFAULT_BIN_ID;
+      const storedBinId = localStorage.getItem(JSONBIN_BIN_ID_KEY);
+      let usedId = DEFAULT_BIN_ID;
+      let record: AppData | null = null;
 
-      try {
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${storedBinId}/latest`, {
-          headers: {
-            'X-Master-Key': JSONBIN_API_KEY,
-          },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          setData({
-            ...defaultData,
-            ...result.record,
-            settings: { ...defaultSettings, ...result.record?.settings },
-          });
-          localStorage.setItem(JSONBIN_BIN_ID_KEY, storedBinId);
-          setBinId(storedBinId);
-        } else {
-          console.error('Failed to load bin:', response.status);
-          setBinId(storedBinId);
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-        setBinId(storedBinId);
+      if (storedBinId && storedBinId !== DEFAULT_BIN_ID) {
+        try {
+          const stored = await loadBin(storedBinId);
+          const hasData = stored && (
+            (stored.ingredients?.length ?? 0) > 0 ||
+            (stored.recipes?.length ?? 0) > 0 ||
+            (stored.products?.length ?? 0) > 0 ||
+            (stored.orders?.length ?? 0) > 0
+          );
+          if (hasData) {
+            record = stored;
+            usedId = storedBinId;
+          }
+        } catch { /* fall through to default */ }
       }
 
+      if (!record) {
+        try {
+          record = await loadBin(DEFAULT_BIN_ID);
+          usedId = DEFAULT_BIN_ID;
+        } catch (error) {
+          console.error('Error loading default bin:', error);
+        }
+      }
+
+      if (record) {
+        setData({
+          ...defaultData,
+          ...record,
+          settings: { ...defaultSettings, ...record?.settings },
+        });
+      }
+
+      localStorage.setItem(JSONBIN_BIN_ID_KEY, usedId);
+      setBinId(usedId);
       setIsLoaded(true);
     };
 
