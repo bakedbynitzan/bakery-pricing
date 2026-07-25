@@ -10,7 +10,7 @@ const pad = (n: number) => n.toString().padStart(4, '0');
 
 export function ReceiptDocument({ receipt, onClose }: Props) {
   return (
-    <div className="receipt-overlay no-print" onClick={onClose}>
+    <div className="receipt-overlay" onClick={onClose}>
       <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
         <div className="receipt-toolbar no-print">
           <button className="btn btn-primary" onClick={() => window.print()}>🖨️ הדפסה / שמירה כ-PDF</button>

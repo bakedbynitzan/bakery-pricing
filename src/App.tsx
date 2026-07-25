@@ -9,10 +9,11 @@ import { Reports } from './components/Reports';
 import { Expenses } from './components/Expenses';
 import { CashFlow } from './components/CashFlow';
 import { Receipts } from './components/Receipts';
+import { Guide } from './components/Guide';
 import { Settings } from './components/Settings';
 import './App.css';
 
-type Tab = 'orders' | 'products' | 'reports' | 'cashflow' | 'expenses' | 'receipts' | 'calculator' | 'ingredients' | 'recipes' | 'settings';
+type Tab = 'orders' | 'products' | 'reports' | 'cashflow' | 'expenses' | 'receipts' | 'calculator' | 'ingredients' | 'recipes' | 'guide' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('orders');
@@ -130,6 +131,12 @@ function App() {
           📖 מתכונים
         </button>
         <button
+          className={`nav-btn ${activeTab === 'guide' ? 'active' : ''}`}
+          onClick={() => setActiveTab('guide')}
+        >
+          ❓ מדריך
+        </button>
+        <button
           className={`nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => setActiveTab('settings')}
         >
@@ -205,6 +212,7 @@ function App() {
             onUpdate={updateRecipes}
           />
         )}
+        {activeTab === 'guide' && <Guide />}
         {activeTab === 'settings' && (
           <Settings
             settings={data.settings}
