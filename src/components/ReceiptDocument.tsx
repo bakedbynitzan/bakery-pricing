@@ -31,8 +31,11 @@ export function ReceiptDocument({ receipt, signature, onClose }: Props) {
     <div className="receipt-overlay" onClick={onClose}>
       <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
         <div className="receipt-toolbar no-print">
-          <button className="btn btn-primary" onClick={handlePrint}>🖨️ הדפסה / שמירה כ-PDF</button>
-          <button className="btn btn-secondary" onClick={onClose}>סגירה</button>
+          <span className="receipt-preview-title">👁️ תצוגה מקדימה — בדקי שהכל תקין לפני שליחה</span>
+          <div className="receipt-toolbar-actions">
+            <button className="btn btn-primary" onClick={handlePrint}>🖨️ הדפסה / שמירה כ-PDF</button>
+            <button className="btn btn-secondary" onClick={onClose}>סגירה</button>
+          </div>
         </div>
 
         <div className="receipt-print" id="receipt-print">

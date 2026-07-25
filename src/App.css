@@ -2891,7 +2891,9 @@ html, body {
   width: 100%;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
-.receipt-toolbar { display: flex; gap: 0.5rem; justify-content: flex-end; padding: 1rem; border-bottom: 1px solid #eee; }
+.receipt-toolbar { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 1rem; border-bottom: 1px solid #eee; }
+.receipt-toolbar-actions { display: flex; gap: 0.5rem; }
+.receipt-preview-title { font-weight: 600; color: #1a1a1a; font-size: 0.95rem; }
 
 .receipt-print { padding: 2rem; direction: rtl; color: #1a1a1a; }
 .receipt-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a1a1a; padding-bottom: 1rem; margin-bottom: 1rem; }
@@ -2915,7 +2917,9 @@ html, body {
 .receipt-signature-line { letter-spacing: 1px; }
 
 @media print {
-  @page { margin: 12mm; }
+  /* margin:0 מבטל את הכותרת/כותרת-תחתית שהדפדפן מוסיף (תאריך/שם/URL).
+     הריפוד של הקבלה עצמה מספק את השוליים. */
+  @page { margin: 0; }
   html, body { background: #fff !important; height: auto !important; }
 
   /* הקבלה מוצגת ב-portal על body; מסתירים לגמרי את האפליקציה
@@ -2944,7 +2948,7 @@ html, body {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 14mm 12mm !important;
     box-sizing: border-box !important;
     page-break-inside: avoid;
     -webkit-print-color-adjust: exact !important;
