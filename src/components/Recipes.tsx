@@ -7,56 +7,12 @@ import {
   unitLabels,
   categoryLabels,
 } from '../types';
+import { ingredientCost, ingredientsTotalCost } from '../utils/units';
 
 interface Props {
   recipes: Recipe[];
   ingredients: Ingredient[];
   onUpdate: (recipes: Recipe[]) => void;
-}
-
-// המרת יחידות לחישוב עלות
-function convertToBaseUnit(quantity: number, fromUnit: string, toUnit: string): number {
-  if (fromUnit === toUnit) return quantity;
-  
-  // המרות לגרם
-  if (toUnit === 'kg' && fromUnit === 'g') return quantity / 1000;
-  if (toUnit === 'g' && fromUnit === 'kg') return quantity * 1000;
-  
-  // המרות למ"ל
-  if (toUnit === 'l' && fromUnit === 'ml') return quantity / 1000;
-  if (toUnit === 'ml' && fromUnit === 'l') return quantity * 1000;
-  
-  // המרות כפות וכוסות
-  if (fromUnit === 'tbsp' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 15;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-  if (fromUnit === 'tsp' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 5;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-  if (fromUnit === 'cup' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 240;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-
-  return quantity;
-}
-
-// חישוב עלות חומר גלם בודד
-function calculateIngredientCost(
-  recipeIng: RecipeIngredient,
-  ingredientsList: Ingredient[]
-): number {
-  const ingredient = ingredientsList.find((i) => i.id === recipeIng.ingredientId);
-  if (!ingredient) return 0;
-  
-  const convertedQty = convertToBaseUnit(
-    recipeIng.quantity,
-    recipeIng.unit,
-    ingredient.unit
-  );
-  return convertedQty * ingredient.pricePerUnit;
 }
 
 export function Recipes({ recipes, ingredients, onUpdate }: Props) {
@@ -214,9 +170,7 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
 
   // חישוב עלות כוללת של חומרי הגלם בטופס
   const totalIngredientsCost = useMemo(() => {
-    return form.ingredients.reduce((total, ing) => {
-      return total + calculateIngredientCost(ing, ingredients);
-    }, 0);
+    return ingredientsTotalCost(form.ingredients, ingredients);
   }, [form.ingredients, ingredients]);
 
   // חישוב עלות ליחידה
@@ -227,9 +181,7 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
 
   // חישוב עלות למתכון שמור
   const getRecipeTotalCost = (recipe: Recipe) => {
-    return recipe.ingredients.reduce((total, ing) => {
-      return total + calculateIngredientCost(ing, ingredients);
-    }, 0);
+    return ingredientsTotalCost(recipe.ingredients, ingredients);
   };
 
   return (
@@ -400,12 +352,20 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
                   </thead>
                   <tbody>
                     {form.ingredients.map((ing, index) => {
-                      const cost = calculateIngredientCost(ing, ingredients);
+                      const { cost, valid } = ingredientCost(ing, ingredients);
                       return (
                         <tr key={index}>
                           <td>{getIngredientName(ing.ingredientId)}</td>
                           <td>{ing.quantity} {unitLabels[ing.unit]}</td>
-                          <td>₪{cost.toFixed(2)}</td>
+                          <td>
+                            {valid ? (
+                              `₪${cost.toFixed(2)}`
+                            ) : (
+                              <span className="unit-warning" title="לא ניתן להמיר בין היחידות (למשל יחידה ↔ גרם). בדקי את יחידת המידה.">
+                                ⚠️ יחידה
+                              </span>
+                            )}
+                          </td>
                           <td>
                             <button
                               type="button"

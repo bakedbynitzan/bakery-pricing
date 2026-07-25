@@ -1,9 +1,15 @@
 import { useState, useMemo } from 'react';
-import { Order, OrderItem, Product, orderStatusLabels } from '../types';
+import { Order, OrderItem, Product, Recipe, Ingredient, Receipt, ReceiptItem, orderStatusLabels } from '../types';
+import { productMaterialCost, orderProfit } from '../utils/orders';
+import { ReceiptDocument } from './ReceiptDocument';
 
 interface Props {
   orders: Order[];
   products: Product[];
+  recipes: Recipe[];
+  ingredients: Ingredient[];
+  receipts: Receipt[];
+  addReceipt: (r: Omit<Receipt, 'number'>) => Receipt;
   onUpdate: (orders: Order[]) => void;
 }
 
@@ -15,9 +21,10 @@ interface CustomerInfo {
   lastOrderDate: string;
 }
 
-export function Orders({ orders, products, onUpdate }: Props) {
+export function Orders({ orders, products, recipes, ingredients, receipts, addReceipt, onUpdate }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<Receipt | null>(null);
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     customerName: '',
@@ -151,6 +158,7 @@ export function Orders({ orders, products, onUpdate }: Props) {
         quantity,
         pricePerUnit: product.sellingPrice,
         totalPrice: product.sellingPrice * quantity,
+        costPerUnit: productMaterialCost(product, recipes, ingredients),
       };
 
       setForm({
@@ -182,6 +190,17 @@ export function Orders({ orders, products, onUpdate }: Props) {
     const now = Date.now();
     const totalAmount = calculateTotal();
 
+    // צילום עלות חומרי גלם: משלים costPerUnit לפריטים שחסרים (למשל בעריכת הזמנה ישנה)
+    const enrichedItems = form.items.map((it) => {
+      if (it.productId === 'custom' || typeof it.costPerUnit === 'number') return it;
+      const p = products.find((pp) => pp.id === it.productId);
+      return { ...it, costPerUnit: p ? productMaterialCost(p, recipes, ingredients) : 0 };
+    });
+    const totalCost = enrichedItems.reduce(
+      (s, it) => s + (it.costPerUnit || 0) * it.quantity,
+      0
+    );
+
     if (editingId) {
       onUpdate(
         orders.map((ord) =>
@@ -191,11 +210,12 @@ export function Orders({ orders, products, onUpdate }: Props) {
                 date: form.date,
                 customerName: form.customerName,
                 customerPhone: form.customerPhone,
-                items: form.items,
+                items: enrichedItems,
                 packagingCost: parseFloat(form.packagingCost) || 0,
                 deliveryCost: parseFloat(form.deliveryCost) || 0,
                 discount: parseFloat(form.discount) || 0,
                 totalAmount,
+                totalCost,
                 status: form.status,
                 notes: form.notes,
                 updatedAt: now,
@@ -209,11 +229,12 @@ export function Orders({ orders, products, onUpdate }: Props) {
         date: form.date,
         customerName: form.customerName,
         customerPhone: form.customerPhone,
-        items: form.items,
+        items: enrichedItems,
         packagingCost: parseFloat(form.packagingCost) || 0,
         deliveryCost: parseFloat(form.deliveryCost) || 0,
         discount: parseFloat(form.discount) || 0,
         totalAmount,
+        totalCost,
         status: form.status,
         notes: form.notes,
         createdAt: now,
@@ -259,6 +280,36 @@ export function Orders({ orders, products, onUpdate }: Props) {
       return item.customName;
     }
     return products.find((p) => p.id === item.productId)?.name || 'מוצר לא נמצא';
+  };
+
+  const handleReceipt = (order: Order) => {
+    // אם כבר הופקה קבלה להזמנה — הצג אותה (שומר על מספור רץ תקין)
+    const existing = receipts.find((r) => r.orderId === order.id);
+    if (existing) {
+      setViewingReceipt(existing);
+      return;
+    }
+    const items: ReceiptItem[] = order.items.map((it) => ({
+      description: getProductName(it),
+      quantity: it.quantity,
+      unitPrice: it.pricePerUnit,
+      total: it.totalPrice,
+    }));
+    if (order.packagingCost > 0) items.push({ description: 'אריזה', quantity: 1, unitPrice: order.packagingCost, total: order.packagingCost });
+    if (order.deliveryCost > 0) items.push({ description: 'משלוח', quantity: 1, unitPrice: order.deliveryCost, total: order.deliveryCost });
+    if (order.discount > 0) items.push({ description: 'הנחה', quantity: 1, unitPrice: -order.discount, total: -order.discount });
+
+    const receipt = addReceipt({
+      id: crypto.randomUUID(),
+      orderId: order.id,
+      date: new Date().toISOString().split('T')[0],
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      items,
+      total: order.totalAmount,
+      createdAt: Date.now(),
+    });
+    setViewingReceipt(receipt);
   };
 
   // מיון לפי תאריך (חדש קודם)
@@ -532,11 +583,28 @@ export function Orders({ orders, products, onUpdate }: Props) {
             />
           </div>
 
-          {form.items.length > 0 && (
-            <div className="order-total">
-              <strong>סה"כ לתשלום: ₪{calculateTotal()}</strong>
-            </div>
-          )}
+          {form.items.length > 0 && (() => {
+            const itemsRevenue = form.items.reduce((s, i) => s + i.totalPrice, 0);
+            const materialCost = form.items.reduce((s, i) => s + (i.costPerUnit || 0) * i.quantity, 0);
+            const profit = itemsRevenue - (parseFloat(form.discount) || 0) - materialCost;
+            const profitPct = itemsRevenue > 0 ? (profit / itemsRevenue) * 100 : 0;
+            return (
+              <div className="order-total">
+                <div className="order-total-line">
+                  <span>סה"כ לתשלום:</span>
+                  <strong>₪{calculateTotal()}</strong>
+                </div>
+                <div className="order-total-line sub">
+                  <span>עלות חומרי גלם:</span>
+                  <span>₪{materialCost.toFixed(0)}</span>
+                </div>
+                <div className={`order-total-line profit ${profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+                  <span>רווח משוער (אחרי חומרי גלם):</span>
+                  <strong>₪{profit.toFixed(0)} ({profitPct.toFixed(0)}%)</strong>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="form-actions">
             <button type="submit" className="btn btn-primary">
@@ -593,9 +661,27 @@ export function Orders({ orders, products, onUpdate }: Props) {
                 ))}
               </div>
 
+              {order.status !== 'cancelled' && (() => {
+                const p = orderProfit(order, products, recipes, ingredients);
+                const cls = p.profit >= 0 ? 'profit-positive' : 'profit-negative';
+                return (
+                  <div className="order-profit-row">
+                    <span className="op-item">חומרי גלם: <strong>₪{p.materialCost.toFixed(0)}</strong></span>
+                    <span className={`op-item ${cls}`}>
+                      רווח: <strong>₪{p.profit.toFixed(0)}</strong>
+                      {p.profitPercent !== null && <span className="op-pct"> ({p.profitPercent.toFixed(0)}%)</span>}
+                    </span>
+                    {!p.hasSnapshot && <span className="op-estimate" title="עלות מוערכת לפי מחירי חומרי הגלם הנוכחיים (ההזמנה נוצרה לפני מעקב עלות)">~ הערכה</span>}
+                  </div>
+                );
+              })()}
+
               {order.notes && <p className="order-notes">{order.notes}</p>}
 
               <div className="order-actions">
+                <button onClick={() => handleReceipt(order)} className="btn btn-small">
+                  🧾 {receipts.some((r) => r.orderId === order.id) ? 'הצג קבלה' : 'הפק קבלה'}
+                </button>
                 <button onClick={() => handleEdit(order)} className="btn btn-small">
                   ✏️ ערוך
                 </button>
@@ -609,6 +695,10 @@ export function Orders({ orders, products, onUpdate }: Props) {
             </div>
           ))}
         </div>
+      )}
+
+      {viewingReceipt && (
+        <ReceiptDocument receipt={viewingReceipt} onClose={() => setViewingReceipt(null)} />
       )}
     </div>
   );

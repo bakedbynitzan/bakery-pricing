@@ -703,6 +703,12 @@ td.price-cell {
   font-weight: 500;
 }
 
+.unit-warning {
+  color: var(--warning);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* תצוגת מחיר מחושב */
 .price-preview {
   background: var(--primary-light);
@@ -2607,4 +2613,144 @@ td.price-cell {
     font-size: 0.8rem;
     padding: 0.5rem;
   }
+}
+
+/* ===== שלב א׳: רווח בהזמנות ===== */
+.profit-positive { color: var(--success); }
+.profit-negative { color: var(--danger); }
+
+.order-profit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--primary-light);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.order-profit-row .op-pct { font-size: 0.8rem; opacity: 0.85; }
+.order-profit-row .op-estimate {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  border: 1px dashed var(--border);
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+}
+
+.order-total-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.15rem 0;
+}
+.order-total-line.sub { color: var(--text-light); font-size: 0.9rem; }
+.order-total-line.profit { border-top: 1px dashed var(--border); margin-top: 0.3rem; padding-top: 0.4rem; }
+
+.price-apply { background: none; border: none; cursor: pointer; font: inherit; color: var(--accent); font-weight: 700; }
+.price-apply:hover { text-decoration: underline; }
+.manual-cost-group .hint { font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem; display: block; }
+
+/* ===== שלב ב׳: הוצאות ===== */
+.expenses-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.expense-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--shadow);
+}
+.expense-main { display: flex; align-items: center; gap: 0.75rem; }
+.expense-icon { font-size: 1.4rem; }
+.expense-info { display: flex; flex-direction: column; }
+.expense-desc { font-weight: 600; }
+.expense-meta { font-size: 0.8rem; color: var(--text-light); }
+.expense-side { display: flex; align-items: center; gap: 0.75rem; }
+.expense-amount { font-weight: 700; color: var(--danger); }
+.expense-actions { display: flex; gap: 0.25rem; }
+
+/* ===== שלב ג׳: תזרים ===== */
+.stat-card.stat-positive { border-inline-start: 4px solid var(--success); }
+.stat-card.stat-negative { border-inline-start: 4px solid var(--danger); }
+
+.cashflow-table { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+.cashflow-row {
+  display: grid;
+  grid-template-columns: 90px 100px 100px 1fr 100px;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.cf-month { font-weight: 600; }
+.cf-income { color: var(--success); }
+.cf-expense { color: var(--danger); }
+.cf-bar-wrap { height: 8px; background: var(--primary-light); border-radius: 4px; overflow: hidden; }
+.cf-bar { height: 100%; border-radius: 4px; }
+.cf-bar.positive { background: var(--success); }
+.cf-bar.negative { background: var(--danger); }
+.cf-net { text-align: end; font-weight: 700; }
+.cashflow-note { margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-light); }
+.winner-row { background: var(--accent-light); font-weight: 600; }
+
+/* ===== שלב ד׳: קבלות ===== */
+.receipt-item-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; }
+.receipt-item-row input { flex: 1; min-width: 120px; }
+.row-total { min-width: 80px; font-weight: 600; }
+
+.receipt-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 1000;
+  overflow-y: auto;
+}
+.receipt-modal {
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: var(--radius);
+  max-width: 640px;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+.receipt-toolbar { display: flex; gap: 0.5rem; justify-content: flex-end; padding: 1rem; border-bottom: 1px solid #eee; }
+
+.receipt-print { padding: 2rem; direction: rtl; color: #1a1a1a; }
+.receipt-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a1a1a; padding-bottom: 1rem; margin-bottom: 1rem; }
+.receipt-business h2 { margin: 0 0 0.25rem; font-size: 1.25rem; }
+.receipt-business p { margin: 0.1rem 0; font-size: 0.85rem; color: #444; }
+.receipt-title { text-align: end; }
+.receipt-title h1 { margin: 0; font-size: 1.8rem; letter-spacing: 2px; }
+.receipt-number { margin: 0.25rem 0 0; font-weight: 700; }
+.receipt-date { margin: 0.1rem 0; font-size: 0.9rem; color: #444; }
+.receipt-customer { display: flex; justify-content: space-between; margin-bottom: 1rem; font-size: 0.95rem; }
+.receipt-items { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+.receipt-items th, .receipt-items td { border: 1px solid #ccc; padding: 0.5rem; text-align: center; font-size: 0.9rem; }
+.receipt-items th { background: #f2f2f2; }
+.receipt-total-label { text-align: end; font-weight: 700; }
+.receipt-total-value { font-weight: 700; font-size: 1.05rem; }
+.receipt-payment, .receipt-note { font-size: 0.9rem; margin: 0.25rem 0; }
+.receipt-legal { margin-top: 1rem; padding: 0.5rem; background: #f7f7f7; border-radius: 6px; font-size: 0.85rem; }
+.receipt-signature { margin-top: 2rem; font-size: 0.9rem; }
+
+@media print {
+  body * { visibility: hidden !important; }
+  #receipt-print, #receipt-print * { visibility: visible !important; }
+  #receipt-print {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 1.5rem;
+    width: 100%;
+  }
+  .no-print { display: none !important; }
 }

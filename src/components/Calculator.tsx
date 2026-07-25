@@ -6,6 +6,7 @@ import {
   PricingSettings,
   unitLabels,
 } from '../types';
+import { ingredientCost, ingredientsTotalCost } from '../utils/units';
 
 interface Props {
   recipes: Recipe[];
@@ -21,35 +22,6 @@ const PROFIT_PRESETS = [
   { label: '150%', value: 150 },
   { label: '200%', value: 200 },
 ];
-
-// המרת יחידות לחישוב עלות
-function convertToBaseUnit(quantity: number, fromUnit: string, toUnit: string): number {
-  if (fromUnit === toUnit) return quantity;
-
-  // המרות לגרם
-  if (toUnit === 'kg' && fromUnit === 'g') return quantity / 1000;
-  if (toUnit === 'g' && fromUnit === 'kg') return quantity * 1000;
-  
-  // המרות למ"ל
-  if (toUnit === 'l' && fromUnit === 'ml') return quantity / 1000;
-  if (toUnit === 'ml' && fromUnit === 'l') return quantity * 1000;
-  
-  // המרות כפות וכוסות
-  if (fromUnit === 'tbsp' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 15;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-  if (fromUnit === 'tsp' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 5;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-  if (fromUnit === 'cup' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 240;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-
-  return quantity;
-}
 
 // עיגול למחיר "יפה"
 function roundToNicePrice(price: number): number {
@@ -74,21 +46,12 @@ export function Calculator({ recipes, ingredients, packagings, settings }: Props
     if (!selectedRecipe) return null;
 
     // חישוב עלות חומרי גלם בלבד
-    let ingredientsCost = 0;
-    for (const recipeIng of selectedRecipe.ingredients) {
-      const ingredient = ingredients.find((i) => i.id === recipeIng.ingredientId);
-      if (ingredient) {
-        const convertedQty = convertToBaseUnit(
-          recipeIng.quantity,
-          recipeIng.unit,
-          ingredient.unit
-        );
-        ingredientsCost += convertedQty * ingredient.pricePerUnit;
-      }
-    }
+    const ingredientsCost = ingredientsTotalCost(selectedRecipe.ingredients, ingredients);
 
     // עלות ליחידה אחת (מהמתכון)
-    const costPerUnitFromRecipe = ingredientsCost / selectedRecipe.yield;
+    const costPerUnitFromRecipe = selectedRecipe.yield
+      ? ingredientsCost / selectedRecipe.yield
+      : 0;
     const totalIngredientsCost = costPerUnitFromRecipe * quantity;
 
     // עלות אריזה
@@ -340,17 +303,19 @@ export function Calculator({ recipes, ingredients, packagings, settings }: Props
                     {selectedRecipe.ingredients.map((recipeIng, index) => {
                       const ingredient = ingredients.find((i) => i.id === recipeIng.ingredientId);
                       if (!ingredient) return null;
-                      const convertedQty = convertToBaseUnit(
-                        recipeIng.quantity,
-                        recipeIng.unit,
-                        ingredient.unit
-                      );
-                      const cost = convertedQty * ingredient.pricePerUnit;
+                      const { cost, valid } = ingredientCost(recipeIng, ingredients);
                       return (
                         <li key={index}>
                           <span>{ingredient.name}</span>
                           <span>
-                            {recipeIng.quantity} {unitLabels[recipeIng.unit]} = ₪{cost.toFixed(2)}
+                            {recipeIng.quantity} {unitLabels[recipeIng.unit]} ={' '}
+                            {valid ? (
+                              `₪${cost.toFixed(2)}`
+                            ) : (
+                              <span className="unit-warning" title="לא ניתן להמיר בין היחידות. בדקי את יחידת המידה של חומר הגלם.">
+                                ⚠️ יחידה לא תואמת
+                              </span>
+                            )}
                           </span>
                         </li>
                       );

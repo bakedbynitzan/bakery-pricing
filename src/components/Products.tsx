@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Product, ProductComponent, Recipe, Ingredient, RecipeIngredient } from '../types';
+import { Product, ProductComponent, Recipe, Ingredient } from '../types';
+import { ingredientsTotalCost } from '../utils/units';
 
 interface Props {
   products: Product[];
@@ -8,50 +9,10 @@ interface Props {
   onUpdate: (products: Product[]) => void;
 }
 
-// המרת יחידות לחישוב עלות
-function convertToBaseUnit(quantity: number, fromUnit: string, toUnit: string): number {
-  if (fromUnit === toUnit) return quantity;
-  if (toUnit === 'kg' && fromUnit === 'g') return quantity / 1000;
-  if (toUnit === 'g' && fromUnit === 'kg') return quantity * 1000;
-  if (toUnit === 'l' && fromUnit === 'ml') return quantity / 1000;
-  if (toUnit === 'ml' && fromUnit === 'l') return quantity * 1000;
-  if (fromUnit === 'tbsp' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 15;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-  if (fromUnit === 'tsp' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 5;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-  if (fromUnit === 'cup' && (toUnit === 'ml' || toUnit === 'l')) {
-    const ml = quantity * 240;
-    return toUnit === 'l' ? ml / 1000 : ml;
-  }
-  return quantity;
-}
-
-// חישוב עלות חומר גלם בודד
-function calculateIngredientCost(
-  recipeIng: RecipeIngredient,
-  ingredientsList: Ingredient[]
-): number {
-  const ingredient = ingredientsList.find((i) => i.id === recipeIng.ingredientId);
-  if (!ingredient) return 0;
-  const convertedQty = convertToBaseUnit(recipeIng.quantity, recipeIng.unit, ingredient.unit);
-  return convertedQty * ingredient.pricePerUnit;
-}
-
-// חישוב עלות מתכון שלם
-function getRecipeTotalCost(recipe: Recipe, ingredientsList: Ingredient[]): number {
-  return recipe.ingredients.reduce((total, ing) => {
-    return total + calculateIngredientCost(ing, ingredientsList);
-  }, 0);
-}
-
 // חישוב עלות ליחידה של מתכון
 function getRecipeCostPerUnit(recipe: Recipe, ingredientsList: Ingredient[]): number {
-  const totalCost = getRecipeTotalCost(recipe, ingredientsList);
-  return totalCost / recipe.yield;
+  const totalCost = ingredientsTotalCost(recipe.ingredients, ingredientsList);
+  return recipe.yield ? totalCost / recipe.yield : 0;
 }
 
 // אחוזי רווח מוצעים
@@ -64,6 +25,7 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
     name: '',
     description: '',
     components: [] as ProductComponent[],
+    manualCost: '', // עלות חומרי גלם ידנית (כשאין רכיבים מקושרים)
     profitPercent: '100',
     sellingPrice: '',
     isActive: true,
@@ -87,15 +49,18 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
     setShowRecipeDropdown(false);
   };
 
-  // חישוב עלות כוללת של המארז
+  // חישוב עלות כוללת של המארז — מהרכיבים אם קיימים, אחרת מהעלות הידנית
   const totalIngredientsCost = useMemo(() => {
-    return form.components.reduce((total, comp) => {
-      const recipe = recipes.find((r) => r.id === comp.recipeId);
-      if (!recipe) return total;
-      const costPerUnit = getRecipeCostPerUnit(recipe, ingredients);
-      return total + costPerUnit * comp.quantity;
-    }, 0);
-  }, [form.components, recipes, ingredients]);
+    if (form.components.length > 0) {
+      return form.components.reduce((total, comp) => {
+        const recipe = recipes.find((r) => r.id === comp.recipeId);
+        if (!recipe) return total;
+        const costPerUnit = getRecipeCostPerUnit(recipe, ingredients);
+        return total + costPerUnit * comp.quantity;
+      }, 0);
+    }
+    return parseFloat(form.manualCost) || 0;
+  }, [form.components, form.manualCost, recipes, ingredients]);
 
   // חישוב מחיר מכירה מומלץ לפי אחוז רווח (עיגול כלפי מעלה)
   const suggestedPrice = useMemo(() => {
@@ -115,6 +80,7 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
       name: '',
       description: '',
       components: [],
+      manualCost: '',
       profitPercent: '100',
       sellingPrice: '',
       isActive: true,
@@ -129,11 +95,13 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
     if (!newComponent.recipeId || !newComponent.quantity) return;
     
     // בדוק אם המתכון כבר קיים במארז
+    const addQty = parseInt(newComponent.quantity) || 1;
     const existingIndex = form.components.findIndex(c => c.recipeId === newComponent.recipeId);
     if (existingIndex >= 0) {
-      // עדכן כמות
-      const updated = [...form.components];
-      updated[existingIndex].quantity += parseInt(newComponent.quantity);
+      // עדכן כמות (עדכון immutable — יצירת אובייקט חדש במקום שינוי הקיים)
+      const updated = form.components.map((c, i) =>
+        i === existingIndex ? { ...c, quantity: c.quantity + addQty } : c
+      );
       setForm({ ...form, components: updated });
     } else {
       setForm({
@@ -142,7 +110,7 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
           ...form.components,
           {
             recipeId: newComponent.recipeId,
-            quantity: parseInt(newComponent.quantity),
+            quantity: addQty,
           },
         ],
       });
@@ -159,8 +127,9 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
   };
 
   const updateComponentQuantity = (index: number, quantity: number) => {
-    const updated = [...form.components];
-    updated[index].quantity = quantity;
+    const updated = form.components.map((c, i) =>
+      i === index ? { ...c, quantity } : c
+    );
     setForm({ ...form, components: updated });
   };
 
@@ -216,10 +185,12 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
   };
 
   const handleEdit = (product: Product) => {
+    const hasComponents = (product.components || []).length > 0;
     setForm({
       name: product.name,
       description: product.description || '',
       components: product.components || [],
+      manualCost: !hasComponents && product.ingredientsCost ? product.ingredientsCost.toString() : '',
       profitPercent: product.profitPercent?.toString() || '100',
       sellingPrice: product.sellingPrice.toString(),
       isActive: product.isActive,
@@ -288,6 +259,18 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
             placeholder="לדוגמה: מארז חגיגי"
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label>מחיר מכירה ללקוח (₪)</label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={form.sellingPrice}
+            onChange={(e) => setForm((prev) => ({ ...prev, sellingPrice: e.target.value }))}
+            placeholder="לדוגמה: 120"
             required
           />
         </div>
@@ -423,77 +406,81 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
               </tbody>
             </table>
             
-            <div className="product-cost-summary">
-              <div className="cost-summary-box">
-                <div className="cost-row total-cost">
-                  <span>💰 עלות חומרי גלם:</span>
-                  <span className="cost-value">₪{totalIngredientsCost.toFixed(2)}</span>
-                </div>
-              </div>
+          </>
+        )}
 
-              <div className="pricing-section">
-                <h5>📊 תמחור המארז</h5>
-                
-                <div className="profit-buttons">
-                  {SUGGESTED_PROFITS.map((profit) => (
+        {/* עלות חומרי גלם ידנית — כשאין רכיבים מקושרים */}
+        {form.components.length === 0 && (
+          <div className="form-group manual-cost-group">
+            <label>💰 עלות חומרי גלם (ידני, אופציונלי)</label>
+            <div className="price-input-wrapper">
+              <span className="currency-sign">₪</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.manualCost}
+                onChange={(e) => setForm((prev) => ({ ...prev, manualCost: e.target.value }))}
+                placeholder="לדוגמה: 45"
+                className="price-input"
+              />
+            </div>
+            <p className="hint">קשרי מתכונים למעלה לחישוב אוטומטי, או הזיני כאן עלות ידנית — כדי לראות רווח בהזמנות ובתזרים.</p>
+          </div>
+        )}
+
+        {/* עזרי תמחור — מוצגים כשיש עלות (מרכיבים או ידני) */}
+        {totalIngredientsCost > 0 && (
+          <div className="product-cost-summary">
+            <div className="cost-summary-box">
+              <div className="cost-row total-cost">
+                <span>💰 עלות חומרי גלם:</span>
+                <span className="cost-value">₪{totalIngredientsCost.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="pricing-section">
+              <h5>📊 עזרי תמחור</h5>
+
+              <div className="profit-buttons">
+                {SUGGESTED_PROFITS.map((profit) => {
+                  const sp = Math.ceil(totalIngredientsCost * (1 + profit / 100));
+                  return (
                     <button
                       key={profit}
                       type="button"
-                      onClick={() => {
-                        setForm((prev) => ({ ...prev, profitPercent: profit.toString(), sellingPrice: '' }));
-                      }}
+                      onClick={() => setForm((prev) => ({ ...prev, profitPercent: profit.toString(), sellingPrice: sp.toString() }))}
                       className={`profit-btn ${form.profitPercent === profit.toString() ? 'active' : ''}`}
+                      title={`מחיר: ₪${sp}`}
                     >
                       {profit}%
                     </button>
-                  ))}
-                </div>
-
-                <div className="profit-custom">
-                  <label>אחוז רווח מותאם:</label>
-                  <div className="profit-input-wrapper">
-                    <input
-                      type="number"
-                      min="0"
-                      value={form.profitPercent}
-                      onChange={(e) => setForm((prev) => ({ ...prev, profitPercent: e.target.value, sellingPrice: '' }))}
-                      className="profit-input"
-                    />
-                    <span className="percent-sign">%</span>
-                  </div>
-                </div>
-
-                <div className="calculated-price">
-                  <span>מחיר מומלץ:</span>
-                  <span className="price-value">₪{suggestedPrice.toFixed(0)}</span>
-                </div>
-
-                <div className="manual-price">
-                  <label>או הזן מחיר ידני:</label>
-                  <div className="price-input-wrapper">
-                    <span className="currency-sign">₪</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={form.sellingPrice}
-                      onChange={(e) => setForm((prev) => ({ ...prev, sellingPrice: e.target.value }))}
-                      placeholder={suggestedPrice.toFixed(0)}
-                      className="price-input"
-                    />
-                  </div>
-                  {form.sellingPrice && (
-                    <div className="actual-profit-display">
-                      רווח בפועל: <strong>{actualProfit.toFixed(0)}%</strong>
-                      <span className={actualProfit >= 100 ? 'profit-good' : actualProfit >= 50 ? 'profit-ok' : 'profit-low'}>
-                        ({actualProfit >= 100 ? '✅ מצוין' : actualProfit >= 50 ? '👍 סביר' : '⚠️ נמוך'})
-                      </span>
-                    </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
+
+              <div className="calculated-price">
+                <span>מחיר מומלץ ({form.profitPercent}% רווח):</span>
+                <button
+                  type="button"
+                  className="price-value price-apply"
+                  onClick={() => setForm((prev) => ({ ...prev, sellingPrice: suggestedPrice.toString() }))}
+                  title="החל מחיר זה"
+                >
+                  ₪{suggestedPrice.toFixed(0)} ↧
+                </button>
+              </div>
+
+              {form.sellingPrice && (
+                <div className="actual-profit-display">
+                  רווח בפועל: <strong>{actualProfit.toFixed(0)}%</strong>
+                  <span className={actualProfit >= 100 ? 'profit-good' : actualProfit >= 50 ? 'profit-ok' : 'profit-low'}>
+                    ({actualProfit >= 100 ? '✅ מצוין' : actualProfit >= 50 ? '👍 סביר' : '⚠️ נמוך'})
+                  </span>
+                </div>
+              )}
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -509,7 +496,7 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
       </div>
 
       <div className="form-actions">
-        <button type="submit" className="btn btn-primary" disabled={form.components.length === 0}>
+        <button type="submit" className="btn btn-primary" disabled={!form.name || !form.sellingPrice}>
           {editingId ? 'עדכן מארז' : 'צור מארז'}
         </button>
         <button type="button" onClick={resetForm} className="btn btn-secondary">
@@ -569,25 +556,29 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
                         </div>
                       )}
                       
-                      <div className="product-pricing-info">
-                        <div className="pricing-row">
-                          <span>עלות חומרים:</span>
-                          <span>₪{getProductTotalCost(product).toFixed(2)}</span>
-                        </div>
-                        <div className="pricing-row">
-                          <span>מחיר לצרכן:</span>
-                          <span className="consumer-price">₪{product.sellingPrice.toFixed(0)}</span>
-                        </div>
-                        <div className="pricing-row">
-                          <span>אחוז רווח:</span>
-                          <span className={`profit-badge ${
-                            ((product.sellingPrice - getProductTotalCost(product)) / getProductTotalCost(product) * 100) >= 100 ? 'high' : 
-                            ((product.sellingPrice - getProductTotalCost(product)) / getProductTotalCost(product) * 100) >= 50 ? 'medium' : 'low'
-                          }`}>
-                            {((product.sellingPrice - getProductTotalCost(product)) / getProductTotalCost(product) * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
+                      {(() => {
+                        const cost = getProductTotalCost(product);
+                        const profitPct = cost > 0 ? ((product.sellingPrice - cost) / cost) * 100 : null;
+                        const badgeClass = profitPct === null ? 'low' : profitPct >= 100 ? 'high' : profitPct >= 50 ? 'medium' : 'low';
+                        return (
+                          <div className="product-pricing-info">
+                            <div className="pricing-row">
+                              <span>עלות חומרים:</span>
+                              <span>₪{cost.toFixed(2)}</span>
+                            </div>
+                            <div className="pricing-row">
+                              <span>מחיר לצרכן:</span>
+                              <span className="consumer-price">₪{product.sellingPrice.toFixed(0)}</span>
+                            </div>
+                            <div className="pricing-row">
+                              <span>אחוז רווח:</span>
+                              <span className={`profit-badge ${badgeClass}`}>
+                                {profitPct === null ? '—' : `${profitPct.toFixed(0)}%`}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                       
                       <div className="product-actions">
                         <button onClick={() => handleDuplicate(product)} className="btn btn-small">

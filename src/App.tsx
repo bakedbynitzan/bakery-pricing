@@ -6,10 +6,13 @@ import { Calculator } from './components/Calculator';
 import { Products } from './components/Products';
 import { Orders } from './components/Orders';
 import { Reports } from './components/Reports';
+import { Expenses } from './components/Expenses';
+import { CashFlow } from './components/CashFlow';
+import { Receipts } from './components/Receipts';
 import { Settings } from './components/Settings';
 import './App.css';
 
-type Tab = 'orders' | 'products' | 'reports' | 'calculator' | 'ingredients' | 'recipes' | 'settings';
+type Tab = 'orders' | 'products' | 'reports' | 'cashflow' | 'expenses' | 'receipts' | 'calculator' | 'ingredients' | 'recipes' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('orders');
@@ -36,6 +39,8 @@ function App() {
     updatePackagings,
     updateProducts,
     updateOrders,
+    updateExpenses,
+    addReceipt,
     updateSettings,
     exportData,
     importData,
@@ -89,6 +94,24 @@ function App() {
           📊 דוחות
         </button>
         <button
+          className={`nav-btn ${activeTab === 'cashflow' ? 'active' : ''}`}
+          onClick={() => setActiveTab('cashflow')}
+        >
+          💵 תזרים
+        </button>
+        <button
+          className={`nav-btn ${activeTab === 'expenses' ? 'active' : ''}`}
+          onClick={() => setActiveTab('expenses')}
+        >
+          💸 הוצאות
+        </button>
+        <button
+          className={`nav-btn ${activeTab === 'receipts' ? 'active' : ''}`}
+          onClick={() => setActiveTab('receipts')}
+        >
+          🧾 קבלות
+        </button>
+        <button
           className={`nav-btn ${activeTab === 'calculator' ? 'active' : ''}`}
           onClick={() => setActiveTab('calculator')}
         >
@@ -119,6 +142,10 @@ function App() {
           <Orders
             orders={data.orders || []}
             products={data.products || []}
+            recipes={data.recipes || []}
+            ingredients={data.ingredients || []}
+            receipts={data.receipts || []}
+            addReceipt={addReceipt}
             onUpdate={updateOrders}
           />
         )}
@@ -134,6 +161,27 @@ function App() {
           <Reports
             orders={data.orders || []}
             products={data.products || []}
+          />
+        )}
+        {activeTab === 'cashflow' && (
+          <CashFlow
+            orders={data.orders || []}
+            expenses={data.expenses || []}
+            products={data.products || []}
+            recipes={data.recipes || []}
+            ingredients={data.ingredients || []}
+          />
+        )}
+        {activeTab === 'expenses' && (
+          <Expenses
+            expenses={data.expenses || []}
+            onUpdate={updateExpenses}
+          />
+        )}
+        {activeTab === 'receipts' && (
+          <Receipts
+            receipts={data.receipts || []}
+            addReceipt={addReceipt}
           />
         )}
         {activeTab === 'calculator' && (

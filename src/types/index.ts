@@ -88,6 +88,7 @@ export interface OrderItem {
   quantity: number;
   pricePerUnit: number;
   totalPrice: number;
+  costPerUnit?: number; // צילום עלות חומרי הגלם ליחידה בזמן ההזמנה (שלב א׳)
 }
 
 // הזמנה
@@ -101,10 +102,55 @@ export interface Order {
   deliveryCost: number;
   discount: number;
   totalAmount: number;
+  totalCost?: number; // צילום COGS: עלות חומרי גלם + אריזה בזמן ההזמנה (שלב א׳)
   status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   notes?: string;
   createdAt: number;
   updatedAt: number;
+}
+
+// הוצאה (שלב ב׳)
+export type ExpenseCategory = 'ingredients' | 'fixed' | 'equipment' | 'other';
+
+export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
+  ingredients: 'חומרי גלם',
+  fixed: 'הוצאות קבועות',
+  equipment: 'ציוד',
+  other: 'אחר',
+};
+
+export interface Expense {
+  id: string;
+  date: string; // YYYY-MM-DD
+  category: ExpenseCategory;
+  description: string;
+  amount: number;
+  supplier?: string;
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// קבלה - עוסק פטור (שלב ד׳)
+export interface ReceiptItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface Receipt {
+  id: string;
+  number: number; // מספר סידורי רץ (דרישת חוק)
+  orderId?: string; // קישור להזמנה אם הופקה ממנה
+  date: string; // תאריך הפקה YYYY-MM-DD
+  customerName: string;
+  customerPhone?: string;
+  items: ReceiptItem[];
+  total: number;
+  paymentMethod?: string;
+  note?: string;
+  createdAt: number;
 }
 
 // סטטוסים בעברית
@@ -123,6 +169,9 @@ export interface AppData {
   products: Product[];
   orders: Order[];
   settings: PricingSettings;
+  expenses?: Expense[]; // שלב ב׳ (אופציונלי לתאימות-לאחור)
+  receipts?: Receipt[]; // שלב ד׳
+  receiptCounter?: number; // המספר הרץ הבא לקבלה
 }
 
 // יחידות מידה בעברית

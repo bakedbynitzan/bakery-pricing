@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppData, PricingSettings } from '../types';
+import { AppData, PricingSettings, Expense, Receipt } from '../types';
 
 const JSONBIN_API_KEY = '$2a$10$oZfLFV8vjYJgPdjv3gZK9O5OD2tUEsH30F7mZMQh4CDJqtrN3qIfq';
 const JSONBIN_BIN_ID_KEY = 'bakery-jsonbin-id';
@@ -24,6 +24,9 @@ const defaultData: AppData = {
   products: [],
   orders: [],
   settings: defaultSettings,
+  expenses: [],
+  receipts: [],
+  receiptCounter: 1,
 };
 
 export function useCloudStorage() {
@@ -163,6 +166,29 @@ export function useCloudStorage() {
   const updateOrders = (orders: AppData['orders']) => {
     const newData = { ...data, orders };
     updateData(newData);
+  };
+
+  const updateExpenses = (expenses: Expense[]) => {
+    const newData = { ...data, expenses };
+    updateData(newData);
+  };
+
+  const updateReceipts = (receipts: Receipt[]) => {
+    const newData = { ...data, receipts };
+    updateData(newData);
+  };
+
+  // הפקת קבלה חדשה עם מספר סידורי רץ (מעדכן גם את המונה באותה שמירה)
+  const addReceipt = (receipt: Omit<Receipt, 'number'>): Receipt => {
+    const number = data.receiptCounter ?? 1;
+    const full: Receipt = { ...receipt, number };
+    const newData = {
+      ...data,
+      receipts: [full, ...(data.receipts || [])],
+      receiptCounter: number + 1,
+    };
+    updateData(newData);
+    return full;
   };
 
   // רענון מהענן
@@ -306,6 +332,9 @@ export function useCloudStorage() {
     updatePackagings,
     updateProducts,
     updateOrders,
+    updateExpenses,
+    updateReceipts,
+    addReceipt,
     updateSettings,
     exportData,
     importData,

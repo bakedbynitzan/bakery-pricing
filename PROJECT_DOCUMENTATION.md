@@ -27,10 +27,10 @@
 
 | שירות | קישור |
 |--------|--------|
-| **האתר החי** | https://baked-by-nitzan.netlify.app |
-| **Netlify Dashboard** | https://app.netlify.com/projects/baked-by-nitzan |
+| **האתר החי** | https://bakedbynitzan.github.io/bakery-pricing/ |
+| **Repo (GitHub)** | https://github.com/bakedbynitzan/bakery-pricing |
 | **JSONBin (אחסון נתונים)** | https://jsonbin.io |
-| **קוד מקור** | `/Users/ofekalfasi/Documents/bakery-pricing/` |
+| **קוד מקור** | `/Users/ofekalfasi/Documents/Cursor/bakery-pricing/` |
 
 ### פרטי גישה
 
@@ -48,12 +48,14 @@
 
 | טכנולוגיה | שימוש |
 |-----------|--------|
-| **React 18** | Frontend framework |
+| **React 19** | Frontend framework |
 | **TypeScript** | Type safety |
 | **Vite** | Build tool |
 | **JSONBin** | Cloud storage (חינמי) |
-| **Netlify** | Hosting (חינמי) |
+| **GitHub Pages** | Hosting (חינמי) |
 | **CSS Variables** | Theming (Light/Dark mode) |
+
+> ⚠️ הערה: החבילה `firebase` מותקנת ב-`package.json` אך **אינה בשימוש** בקוד (שריד מניסוי). מועמדת להסרה.
 
 ---
 
@@ -213,11 +215,12 @@ npm run build
 
 ## 🚀 העלאה לאוויר
 
+האתר מתארח ב-**GitHub Pages** (לא Netlify — התיעוד הישן היה שגוי).
+
 ### פקודה להעלאה:
 ```bash
-cd /Users/ofekalfasi/Documents/bakery-pricing
-npm run build
-npx netlify-cli deploy --prod --dir=dist --site=b3393a7d-9d96-4aac-aa8e-f1827924c96f
+cd /Users/ofekalfasi/Documents/Cursor/bakery-pricing
+npm run deploy   # מריץ build ואז gh-pages -d dist
 ```
 
 ### או בקיצור מ-Cursor:
