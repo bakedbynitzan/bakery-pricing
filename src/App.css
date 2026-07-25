@@ -2915,12 +2915,13 @@ html, body {
 .receipt-signature-line { letter-spacing: 1px; }
 
 @media print {
-  @page { margin: 14mm; }
-  html, body { background: #fff !important; }
-  body * { visibility: hidden !important; }
-  #receipt-print, #receipt-print * { visibility: visible !important; }
+  @page { margin: 12mm; }
+  html, body { background: #fff !important; height: auto !important; }
 
-  /* מאפסים את שכבות המודאל כדי שהקבלה תזרום כרגיל על הדף (לא תיחתך) */
+  /* הקבלה מוצגת ב-portal על body; מסתירים לגמרי את האפליקציה
+     כדי שהקבלה תתחיל בראש הדף ולא תידחף לעמוד שני */
+  #root { display: none !important; }
+
   .receipt-overlay {
     position: static !important;
     display: block !important;
@@ -2929,6 +2930,7 @@ html, body {
     margin: 0 !important;
     overflow: visible !important;
     inset: auto !important;
+    z-index: auto !important;
   }
   .receipt-modal {
     max-width: none !important;
@@ -2944,9 +2946,17 @@ html, body {
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+    page-break-inside: avoid;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .receipt-items { page-break-inside: avoid; }
+
+  /* דחיסה עדינה כדי שהכל ייכנס לעמוד אחד */
+  .receipt-header { margin-bottom: 0.75rem; padding-bottom: 0.75rem; }
+  .receipt-customer { margin-bottom: 0.75rem; }
+  .receipt-items { margin-bottom: 0.75rem; page-break-inside: avoid; }
+  .receipt-legal { margin-top: 0.75rem; }
+  .receipt-signature { margin-top: 1.25rem; }
+
   .no-print { display: none !important; }
 }

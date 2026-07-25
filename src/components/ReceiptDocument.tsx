@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { Receipt } from '../types';
 import { BUSINESS_INFO } from '../config/business';
 
@@ -15,8 +16,9 @@ const DEFAULT_SIGNATURE = import.meta.env.BASE_URL + 'signature.png';
 export function ReceiptDocument({ receipt, signature, onClose }: Props) {
   const sig = signature || DEFAULT_SIGNATURE;
   const handlePrint = () => {
+    // שם קובץ ה-PDF = שם העסק בלבד (הלקוח לא מתעניין במספר הקבלה)
     const prevTitle = document.title;
-    document.title = `קבלה ${pad(receipt.number)} — ${BUSINESS_INFO.businessName}`;
+    document.title = BUSINESS_INFO.businessName;
     const restore = () => {
       document.title = prevTitle;
       window.removeEventListener('afterprint', restore);
@@ -25,7 +27,7 @@ export function ReceiptDocument({ receipt, signature, onClose }: Props) {
     window.print();
   };
 
-  return (
+  return createPortal(
     <div className="receipt-overlay" onClick={onClose}>
       <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
         <div className="receipt-toolbar no-print">
@@ -95,6 +97,7 @@ export function ReceiptDocument({ receipt, signature, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
