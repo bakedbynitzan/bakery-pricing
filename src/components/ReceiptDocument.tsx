@@ -39,7 +39,6 @@ export function ReceiptDocument({ receipt, signature, onClose }: Props) {
               <h2>{BUSINESS_INFO.businessName}</h2>
               <p>{BUSINESS_INFO.ownerName}</p>
               <p>{BUSINESS_INFO.businessType} · ע.מ {BUSINESS_INFO.taxId}</p>
-              {BUSINESS_INFO.address && <p>{BUSINESS_INFO.address}</p>}
               {BUSINESS_INFO.phone && <p>טל׳ {BUSINESS_INFO.phone}</p>}
             </div>
             <div className="receipt-title">

@@ -79,7 +79,7 @@ export function Receipts({ receipts, signature, addReceipt }: Props) {
             </div>
             <div className="form-group">
               <label>שם הלקוח</label>
-              <input type="text" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} placeholder="התקבל מ..." required />
+              <input type="text" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} placeholder="לכבוד..." required />
             </div>
             <div className="form-group">
               <label>טלפון (אופציונלי)</label>
