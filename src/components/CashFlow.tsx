@@ -138,9 +138,9 @@ export function CashFlow({ orders, expenses, products, recipes, ingredients }: P
         </p>
       </div>
 
-      {/* מוצר מנצח לפי רווח */}
+      {/* פריט מנצח לפי רווח */}
       <div className="report-card full-width">
-        <h3>🏆 מוצר מנצח (לפי רווח אחרי חומרי גלם)</h3>
+        <h3>🏆 פריט מנצח (לפי רווח אחרי חומרי גלם)</h3>
         {productProfit.length === 0 ? (
           <p className="no-data">אין נתונים עדיין</p>
         ) : (
@@ -149,7 +149,7 @@ export function CashFlow({ orders, expenses, products, recipes, ingredients }: P
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>מוצר</th>
+                  <th>פריט</th>
                   <th>נמכרו</th>
                   <th>הכנסה</th>
                   <th>חומרי גלם</th>

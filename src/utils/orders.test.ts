@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { productMaterialCost, orderItemUnitCost, orderProfit } from './orders';
+import { productMaterialCost, orderItemUnitCost, orderProfit, catalogItemPricing } from './orders';
 import { Ingredient, Recipe, Product, Order, OrderItem } from '../types';
 
 const ing = (id: string, unit: Ingredient['unit'], pricePerUnit: number): Ingredient => ({
@@ -41,6 +41,35 @@ const products: Product[] = [
   { id: 'P1', name: 'box', components: [{ recipeId: 'R1', quantity: 3 }], sellingPrice: 50, isActive: true, createdAt: 0, updatedAt: 0 },
   { id: 'P2', name: 'manual', ingredientsCost: 45, sellingPrice: 100, isActive: true, createdAt: 0, updatedAt: 0 },
 ];
+
+describe('catalogItemPricing', () => {
+  it('computes net profit and percent from components', () => {
+    const p: Product = { id: 'P1', name: 'box', components: [{ recipeId: 'R1', quantity: 3 }], sellingPrice: 60, isActive: true, createdAt: 0, updatedAt: 0 };
+    const r = catalogItemPricing(p, recipes, ingredients);
+    // cost = 3, netProfit = 57, percent = 1900%
+    expect(r.cost).toBeCloseTo(3, 5);
+    expect(r.hasCost).toBe(true);
+    expect(r.netProfit).toBeCloseTo(57, 5);
+    expect(r.profitPercent).toBeCloseTo(1900, 5);
+  });
+
+  it('uses manual cost for net profit', () => {
+    const p: Product = { id: 'P2', name: 'manual', ingredientsCost: 20, sellingPrice: 60, isActive: true, createdAt: 0, updatedAt: 0 };
+    const r = catalogItemPricing(p, recipes, ingredients);
+    // 60 - 20 = 40 net, 200%
+    expect(r.netProfit).toBe(40);
+    expect(r.profitPercent).toBe(200);
+  });
+
+  it('returns null profit when no cost was entered (the display-bug case)', () => {
+    const p: Product = { id: 'P3', name: 'no-cost', sellingPrice: 220, isActive: true, createdAt: 0, updatedAt: 0 };
+    const r = catalogItemPricing(p, recipes, ingredients);
+    expect(r.cost).toBe(0);
+    expect(r.hasCost).toBe(false);
+    expect(r.netProfit).toBeNull();
+    expect(r.profitPercent).toBeNull();
+  });
+});
 
 describe('orderItemUnitCost', () => {
   it('prefers the saved cost snapshot', () => {

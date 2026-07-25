@@ -35,7 +35,7 @@ export function ReceiptDocument({ receipt, signature, isDraft, onConfirm, onClos
         <div className="receipt-toolbar no-print">
           {isDraft ? (
             <>
-              <span className="receipt-preview-title">👁️ תצוגה מקדימה (טיוטה) — בדקי שכל המוצרים נכונים</span>
+              <span className="receipt-preview-title">👁️ תצוגה מקדימה (טיוטה) — בדקי שכל הפריטים נכונים</span>
               <div className="receipt-toolbar-actions">
                 <button className="btn btn-primary" onClick={onConfirm}>✓ צור קבלה</button>
                 <button className="btn btn-secondary" onClick={onClose}>↩️ חזרה לעריכה</button>

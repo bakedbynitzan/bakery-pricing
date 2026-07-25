@@ -89,6 +89,7 @@ export interface OrderItem {
   pricePerUnit: number;
   totalPrice: number;
   costPerUnit?: number; // צילום עלות חומרי הגלם ליחידה בזמן ההזמנה (שלב א׳)
+  note?: string; // הערה ללקוח בהודעת הסיכום (מוצג בסוגריים)
 }
 
 // הזמנה
@@ -105,6 +106,11 @@ export interface Order {
   totalCost?: number; // צילום COGS: עלות חומרי גלם + אריזה בזמן ההזמנה (שלב א׳)
   status: 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
   notes?: string;
+  // שדות להודעת סיכום ללקוח (וואטסאפ)
+  inscription?: string; // כיתוב (למשל: מזל טוב ירדן)
+  fulfillmentType?: 'pickup' | 'delivery'; // איסוף / משלוח
+  fulfillmentWhen?: string; // מועד איסוף/מסירה (טקסט חופשי, יום+שעה)
+  deliveryAddress?: string; // כתובת למשלוח (כשמדובר במשלוח)
   createdAt: number;
   updatedAt: number;
 }

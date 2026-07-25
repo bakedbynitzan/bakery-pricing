@@ -10,6 +10,7 @@ export function Reports({ orders, products }: Props) {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedCustomer, setSelectedCustomer] = useState('all');
   const [selectedProduct, setSelectedProduct] = useState('all');
+  const [granularity, setGranularity] = useState<'day' | 'month' | 'year'>('month');
 
   // רשימת לקוחות ייחודיים
   const uniqueCustomers = useMemo(() => {
@@ -111,6 +112,43 @@ export function Reports({ orders, products }: Props) {
     };
   }, [filteredOrders, products]);
 
+  // פילוח הכנסות לפי יום / חודש / שנה (מכבד את הפילטרים)
+  const periodBreakdown = useMemo(() => {
+    const map: Record<string, { orders: number; revenue: number }> = {};
+    filteredOrders.forEach((order) => {
+      let key = order.date;
+      if (granularity === 'month') key = order.date.substring(0, 7);
+      else if (granularity === 'year') key = order.date.substring(0, 4);
+      if (!map[key]) map[key] = { orders: 0, revenue: 0 };
+      map[key].orders += 1;
+      map[key].revenue += order.totalAmount;
+    });
+    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [filteredOrders, granularity]);
+
+  const formatPeriod = (key: string) => {
+    if (granularity === 'day') return new Date(key).toLocaleDateString('he-IL');
+    if (granularity === 'year') return key;
+    const [year, month] = key.split('-');
+    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+  };
+
+  // כרטיס לקוח — מוצג כשנבחר לקוח ספציפי
+  const customerCard = useMemo(() => {
+    if (selectedCustomer === 'all') return null;
+    const custOrders = orders.filter((o) => o.customerName === selectedCustomer && o.status !== 'cancelled');
+    if (custOrders.length === 0) return null;
+    const sorted = [...custOrders].sort((a, b) => a.date.localeCompare(b.date));
+    const phone = [...custOrders].reverse().find((o) => o.customerPhone)?.customerPhone || '';
+    return {
+      phone,
+      totalOrders: custOrders.length,
+      totalRevenue: custOrders.reduce((s, o) => s + o.totalAmount, 0),
+      firstDate: sorted[0].date,
+      lastDate: sorted[sorted.length - 1].date,
+    };
+  }, [orders, selectedCustomer]);
+
   // רשימת חודשים זמינים
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
@@ -196,12 +234,12 @@ export function Reports({ orders, products }: Props) {
           </div>
 
           <div className="filter-group">
-            <label>מארז</label>
+            <label>פריט</label>
             <select
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
             >
-              <option value="all">כל המארזים</option>
+              <option value="all">כל הפריטים</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name}
@@ -256,7 +294,7 @@ export function Reports({ orders, products }: Props) {
       <div className="reports-grid">
         {/* מוצרים מובילים */}
         <div className="report-card">
-          <h3>🏆 מארזים {hasFilters ? '(מסונן)' : ''}</h3>
+          <h3>🏆 פריטים מובילים {hasFilters ? '(מסונן)' : ''}</h3>
           {stats.topProducts.length === 0 ? (
             <p className="no-data">אין נתונים</p>
           ) : (
@@ -289,6 +327,68 @@ export function Reports({ orders, products }: Props) {
             </ul>
           )}
         </div>
+      </div>
+
+      {/* כרטיס לקוח */}
+      {customerCard && (
+        <div className="report-card full-width customer-card">
+          <h3>🧑 כרטיס לקוח — {selectedCustomer}</h3>
+          <div className="customer-card-stats">
+            {customerCard.phone && (
+              <span className="cc-stat">📞 <strong>{customerCard.phone}</strong></span>
+            )}
+            <span className="cc-stat">🧾 <strong>{customerCard.totalOrders}</strong> הזמנות</span>
+            <span className="cc-stat">💰 <strong>₪{customerCard.totalRevenue.toLocaleString()}</strong> סה"כ</span>
+            <span className="cc-stat">📅 ראשונה: <strong>{new Date(customerCard.firstDate).toLocaleDateString('he-IL')}</strong></span>
+            <span className="cc-stat">📅 אחרונה: <strong>{new Date(customerCard.lastDate).toLocaleDateString('he-IL')}</strong></span>
+          </div>
+          <p className="hint">היסטוריית ההזמנות המלאה של הלקוח מופיעה בטבלה למטה.</p>
+        </div>
+      )}
+
+      {/* פילוח הכנסות לפי תקופה */}
+      <div className="report-card full-width">
+        <div className="breakdown-header">
+          <h3>📆 פילוח הכנסות {hasFilters ? '(מסונן)' : ''}</h3>
+          <div className="granularity-toggle">
+            <button
+              className={`btn btn-small ${granularity === 'day' ? 'btn-primary' : ''}`}
+              onClick={() => setGranularity('day')}
+            >יומי</button>
+            <button
+              className={`btn btn-small ${granularity === 'month' ? 'btn-primary' : ''}`}
+              onClick={() => setGranularity('month')}
+            >חודשי</button>
+            <button
+              className={`btn btn-small ${granularity === 'year' ? 'btn-primary' : ''}`}
+              onClick={() => setGranularity('year')}
+            >שנתי</button>
+          </div>
+        </div>
+        {periodBreakdown.length === 0 ? (
+          <p className="no-data">אין נתונים</p>
+        ) : (
+          <div className="orders-table-container">
+            <table className="orders-table">
+              <thead>
+                <tr>
+                  <th>{granularity === 'day' ? 'יום' : granularity === 'year' ? 'שנה' : 'חודש'}</th>
+                  <th>הזמנות</th>
+                  <th>הכנסות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {periodBreakdown.map(([key, data]) => (
+                  <tr key={key}>
+                    <td>{formatPeriod(key)}</td>
+                    <td>{data.orders}</td>
+                    <td>₪{data.revenue.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* רשימת הזמנות */}

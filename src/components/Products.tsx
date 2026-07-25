@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Product, ProductComponent, Recipe, Ingredient } from '../types';
 import { ingredientsTotalCost } from '../utils/units';
+import { catalogItemPricing } from '../utils/orders';
 
 interface Props {
   products: Product[];
@@ -33,6 +34,14 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
 
   const [recipeSearch, setRecipeSearch] = useState('');
   const [showRecipeDropdown, setShowRecipeDropdown] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // גלילה לטופס בראש הדף (בעת יצירה/עריכה)
+  const scrollToForm = () => {
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
   const [newComponent, setNewComponent] = useState({
     recipeId: '',
     quantity: '1',
@@ -197,15 +206,17 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
     });
     setEditingId(product.id);
     setIsAdding(false);
+    scrollToForm();
   };
 
   const handleAddNew = () => {
     resetForm();
     setIsAdding(true);
+    scrollToForm();
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('למחוק את המארז?')) {
+    if (confirm('למחוק את הפריט?')) {
       onUpdate(products.filter((prod) => prod.id !== id));
     }
   };
@@ -233,32 +244,21 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
     onUpdate([...products, duplicatedProduct]);
   };
 
-  // חישוב עלות מארז שמור
-  const getProductTotalCost = (product: Product): number => {
-    if (!product.components) return product.ingredientsCost || 0;
-    return product.components.reduce((total, comp) => {
-      const recipe = recipes.find((r) => r.id === comp.recipeId);
-      if (!recipe) return total;
-      const costPerUnit = getRecipeCostPerUnit(recipe, ingredients);
-      return total + costPerUnit * comp.quantity;
-    }, 0);
-  };
-
   const activeProducts = products.filter((p) => p.isActive);
   const inactiveProducts = products.filter((p) => !p.isActive);
 
   const renderForm = () => (
     <form onSubmit={handleSubmit} className="form-card inline-form">
-      <h3>{editingId ? 'עריכת מארז' : 'בניית מארז חדש'}</h3>
+      <h3>{editingId ? 'עריכת פריט' : 'הוספת פריט חדש'}</h3>
 
       <div className="form-grid">
         <div className="form-group">
-          <label>שם המארז</label>
+          <label>שם הפריט</label>
           <input
             type="text"
             value={form.name}
             onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-            placeholder="לדוגמה: מארז חגיגי"
+            placeholder="לדוגמה: קופסת 12 מגולגלות"
             required
           />
         </div>
@@ -281,17 +281,17 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
         <textarea
           value={form.description}
           onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-          placeholder="מה כולל המארז..."
+          placeholder="מה כולל הפריט..."
           rows={2}
         />
       </div>
 
       {/* הוספת רכיבים למארז */}
       <div className="form-section">
-        <h4>🍰 רכיבי המארז (מתוך המתכונים)</h4>
+        <h4>🍰 רכיבי הפריט (מתוך המוצרים)</h4>
         
         {recipes.length === 0 ? (
-          <p className="warning">⚠️ יש להוסיף מתכונים קודם בדף "מתכונים"</p>
+          <p className="warning">⚠️ יש להוסיף מוצרים קודם בדף "מוצרים"</p>
         ) : (
           <div className="component-add-row">
             <div className="autocomplete-wrapper">
@@ -307,7 +307,7 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
                 }}
                 onFocus={() => setShowRecipeDropdown(true)}
                 onBlur={() => setTimeout(() => setShowRecipeDropdown(false), 200)}
-                placeholder="חפש מתכון..."
+                placeholder="חפש מוצר..."
                 className="autocomplete-input"
               />
               {showRecipeDropdown && (
@@ -353,7 +353,7 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
             <table className="components-table">
               <thead>
                 <tr>
-                  <th>מתכון</th>
+                  <th>מוצר</th>
                   <th>כמות</th>
                   <th>עלות ליחידה</th>
                   <th>סה"כ</th>
@@ -425,7 +425,7 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
                 className="price-input"
               />
             </div>
-            <p className="hint">קשרי מתכונים למעלה לחישוב אוטומטי, או הזיני כאן עלות ידנית — כדי לראות רווח בהזמנות ובתזרים.</p>
+            <p className="hint">קשרי מוצרים למעלה לחישוב אוטומטי, או הזיני כאן עלות ידנית — כדי לראות רווח בהזמנות ובתזרים.</p>
           </div>
         )}
 
@@ -440,7 +440,8 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
             </div>
 
             <div className="pricing-section">
-              <h5>📊 עזרי תמחור</h5>
+              <h5>📊 עזר לתמחור</h5>
+              <p className="pricing-help-note">כלי עזר בלבד לחישוב מחיר — את קובעת את המחיר הסופי בשדה "מחיר מכירה ללקוח".</p>
 
               <div className="profit-buttons">
                 {SUGGESTED_PROFITS.map((profit) => {
@@ -471,14 +472,24 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
                 </button>
               </div>
 
-              {form.sellingPrice && (
-                <div className="actual-profit-display">
-                  רווח בפועל: <strong>{actualProfit.toFixed(0)}%</strong>
-                  <span className={actualProfit >= 100 ? 'profit-good' : actualProfit >= 50 ? 'profit-ok' : 'profit-low'}>
-                    ({actualProfit >= 100 ? '✅ מצוין' : actualProfit >= 50 ? '👍 סביר' : '⚠️ נמוך'})
-                  </span>
-                </div>
-              )}
+              {form.sellingPrice && (() => {
+                const price = parseFloat(form.sellingPrice) || 0;
+                const netProfit = price - totalIngredientsCost;
+                return (
+                  <div className="actual-profit-display">
+                    <div className="net-profit-row">
+                      רווח נקי: <strong>₪{netProfit.toFixed(2)}</strong>
+                      <span className="net-profit-calc">(₪{price.toFixed(0)} מחיר − ₪{totalIngredientsCost.toFixed(2)} חומרי גלם)</span>
+                    </div>
+                    <div>
+                      רווח באחוזים: <strong>{actualProfit.toFixed(0)}%</strong>
+                      <span className={actualProfit >= 100 ? 'profit-good' : actualProfit >= 50 ? 'profit-ok' : 'profit-low'}>
+                        ({actualProfit >= 100 ? '✅ מצוין' : actualProfit >= 50 ? '👍 סביר' : '⚠️ נמוך'})
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -491,13 +502,13 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
             checked={form.isActive}
             onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
           />
-          מארז פעיל (מוצג ברשימת ההזמנות)
+          פריט פעיל (מוצג ברשימת ההזמנות)
         </label>
       </div>
 
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={!form.name || !form.sellingPrice}>
-          {editingId ? 'עדכן מארז' : 'צור מארז'}
+          {editingId ? 'עדכן פריט' : 'צור פריט'}
         </button>
         <button type="button" onClick={resetForm} className="btn btn-secondary">
           ביטול
@@ -509,30 +520,30 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
   return (
     <div className="section">
       <div className="section-header">
-        <h2>🎁 מארזים למכירה</h2>
+        <h2>🛍️ קטלוג מכירה</h2>
         {!isAdding && !editingId && (
           <button onClick={handleAddNew} className="btn btn-primary">
-            + בנה מארז חדש
+            + הוסף פריט חדש
           </button>
         )}
       </div>
 
-      {isAdding && !editingId && renderForm()}
+      <div ref={formRef}>
+        {(isAdding || editingId) && renderForm()}
+      </div>
 
       {products.length === 0 && !isAdding ? (
         <div className="empty-state">
-          <p>עדיין אין מארזים.</p>
-          <p>בנה מארז חדש על בסיס המתכונים שלך!</p>
+          <p>הקטלוג ריק עדיין.</p>
+          <p>הוסף פריט חדש על בסיס המוצרים שלך!</p>
         </div>
       ) : (
         <>
           {activeProducts.length > 0 && (
             <div className="products-grid">
-              {activeProducts.map((product) => (
+              {activeProducts.filter((product) => product.id !== editingId).map((product) => (
                 <div key={product.id}>
-                  {editingId === product.id ? (
-                    renderForm()
-                  ) : (
+                  {(
                     <div className="product-card enhanced">
                       <div className="product-header">
                         <h3>{product.name}</h3>
@@ -557,25 +568,31 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
                       )}
                       
                       {(() => {
-                        const cost = getProductTotalCost(product);
-                        const profitPct = cost > 0 ? ((product.sellingPrice - cost) / cost) * 100 : null;
-                        const badgeClass = profitPct === null ? 'low' : profitPct >= 100 ? 'high' : profitPct >= 50 ? 'medium' : 'low';
+                        const { cost, hasCost, netProfit, profitPercent } = catalogItemPricing(product, recipes, ingredients);
+                        const badgeClass = profitPercent === null ? 'na' : profitPercent >= 100 ? 'high' : profitPercent >= 50 ? 'medium' : 'low';
                         return (
                           <div className="product-pricing-info">
                             <div className="pricing-row">
                               <span>עלות חומרים:</span>
-                              <span>₪{cost.toFixed(2)}</span>
+                              <span>{hasCost ? `₪${cost.toFixed(2)}` : 'לא הוזנה'}</span>
                             </div>
                             <div className="pricing-row">
                               <span>מחיר לצרכן:</span>
                               <span className="consumer-price">₪{product.sellingPrice.toFixed(0)}</span>
                             </div>
                             <div className="pricing-row">
+                              <span>רווח נקי:</span>
+                              <span className="net-profit-value">{netProfit === null ? '—' : `₪${netProfit.toFixed(2)}`}</span>
+                            </div>
+                            <div className="pricing-row">
                               <span>אחוז רווח:</span>
                               <span className={`profit-badge ${badgeClass}`}>
-                                {profitPct === null ? '—' : `${profitPct.toFixed(0)}%`}
+                                {profitPercent === null ? 'ללא עלות' : `${profitPercent.toFixed(0)}%`}
                               </span>
                             </div>
+                            {!hasCost && (
+                              <p className="pricing-help-note no-cost-hint">💡 הזיני עלות חומרים (קשרי מוצרים או עלות ידנית) כדי לחשב רווח.</p>
+                            )}
                           </div>
                         );
                       })()}
@@ -609,7 +626,7 @@ export function Products({ products, recipes, ingredients, onUpdate }: Props) {
 
           {inactiveProducts.length > 0 && (
             <div className="inactive-products">
-              <h4>מארזים מוסתרים ({inactiveProducts.length})</h4>
+              <h4>פריטים מוסתרים ({inactiveProducts.length})</h4>
               <div className="products-grid inactive">
                 {inactiveProducts.map((product) => (
                   <div key={product.id} className="product-card inactive">

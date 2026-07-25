@@ -89,7 +89,7 @@ function App() {
           className={`nav-btn ${activeTab === 'products' ? 'active' : ''}`}
           onClick={() => setActiveTab('products')}
         >
-          🎁 מארזים
+          🛍️ קטלוג
         </button>
         <button
           className={`nav-btn ${activeTab === 'reports' ? 'active' : ''}`}
@@ -131,7 +131,7 @@ function App() {
           className={`nav-btn ${activeTab === 'recipes' ? 'active' : ''}`}
           onClick={() => setActiveTab('recipes')}
         >
-          📖 מתכונים
+          📖 מוצרים
         </button>
         <button
           className={`nav-btn ${activeTab === 'guide' ? 'active' : ''}`}
@@ -255,7 +255,7 @@ function App() {
           </button>
           {' | '}
           <span className="stats">
-            {(data.orders || []).length} הזמנות | {(data.products || []).length} מארזים
+            {(data.orders || []).length} הזמנות | {(data.products || []).length} פריטים
           </span>
           {binId && (
             <span className="bin-id" title="קוד סנכרון"> | 🔗 {binId.slice(-6)}</span>

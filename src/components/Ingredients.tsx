@@ -110,7 +110,7 @@ export function Ingredients({ ingredients, onUpdate }: Props) {
           
           <div className="form-grid">
             <div className="form-group">
-              <label>שם המוצר</label>
+              <label>שם חומר הגלם</label>
               <input
                 type="text"
                 value={form.name}

@@ -20,6 +20,33 @@ export function productMaterialCost(
   }, 0);
 }
 
+export interface CatalogPricing {
+  cost: number; // עלות חומרי הגלם של הפריט
+  hasCost: boolean; // האם הוזנה עלות (קשרי מוצרים או עלות ידנית)
+  netProfit: number | null; // רווח נקי בשקלים (null כשלא הוזנה עלות)
+  profitPercent: number | null; // אחוז רווח (null כשלא הוזנה עלות)
+}
+
+/**
+ * מחשב את תמחור פריט בקטלוג (עלות, רווח נקי ואחוז רווח).
+ * כאשר לא הוזנה עלות חומרים (cost = 0) — הרווח לא מוגדר (null),
+ * כדי לא להציג "רווח" מטעה השווה למחיר המלא.
+ */
+export function catalogItemPricing(
+  product: Product,
+  recipes: Recipe[],
+  ingredients: Ingredient[]
+): CatalogPricing {
+  const cost = productMaterialCost(product, recipes, ingredients);
+  const hasCost = cost > 0;
+  return {
+    cost,
+    hasCost,
+    netProfit: hasCost ? product.sellingPrice - cost : null,
+    profitPercent: hasCost ? ((product.sellingPrice - cost) / cost) * 100 : null,
+  };
+}
+
 /**
  * עלות חומרי גלם ליחידה של פריט בהזמנה.
  * מעדיף את צילום העלות ששמור בהזמנה; אחרת מחשב מהמארז הנוכחי (הערכה).

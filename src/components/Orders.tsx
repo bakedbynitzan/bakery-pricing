@@ -1,7 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Order, OrderItem, Product, Recipe, Ingredient, Receipt, ReceiptItem, orderStatusLabels } from '../types';
 import { productMaterialCost, orderProfit } from '../utils/orders';
+import { buildOrderSummary } from '../utils/orderSummary';
+import { BUSINESS_INFO } from '../config/business';
 import { ReceiptDocument } from './ReceiptDocument';
+import { OrderSummary } from './OrderSummary';
 
 interface Props {
   orders: Order[];
@@ -27,6 +30,7 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingReceipt, setViewingReceipt] = useState<Receipt | null>(null);
+  const [summaryText, setSummaryText] = useState<string | null>(null);
   const [autoReceipt, setAutoReceipt] = useState(true);
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -38,6 +42,10 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
     discount: '0',
     status: 'pending' as Order['status'],
     notes: '',
+    inscription: '',
+    fulfillmentType: 'pickup' as 'pickup' | 'delivery',
+    fulfillmentWhen: '',
+    deliveryAddress: '',
   });
 
   const [newItem, setNewItem] = useState({
@@ -122,6 +130,10 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
       discount: '0',
       status: 'pending',
       notes: '',
+      inscription: '',
+      fulfillmentType: 'pickup',
+      fulfillmentWhen: '',
+      deliveryAddress: '',
     });
     setIsAdding(false);
     setEditingId(null);
@@ -221,6 +233,10 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
                 totalCost,
                 status: form.status,
                 notes: form.notes,
+                inscription: form.inscription,
+                fulfillmentType: form.fulfillmentType,
+                fulfillmentWhen: form.fulfillmentWhen,
+                deliveryAddress: form.deliveryAddress,
                 updatedAt: now,
               }
             : ord
@@ -240,16 +256,21 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
         totalCost,
         status: form.status,
         notes: form.notes,
+        inscription: form.inscription,
+        fulfillmentType: form.fulfillmentType,
+        fulfillmentWhen: form.fulfillmentWhen,
+        deliveryAddress: form.deliveryAddress,
         createdAt: now,
         updatedAt: now,
       };
       // יצירת ההזמנה — ובמידת הצורך קבלה מקושרת — בשמירה אטומית אחת
-      const receipt = onCreateOrder(
+      onCreateOrder(
         newOrder,
         autoReceipt ? buildReceiptFromOrder(newOrder) : undefined
       );
+      // פתיחת סיכום ההזמנה ללקוח (להעתקה לוואטסאפ). הקבלה נוצרה ונגישה בכפתור 🧾
+      setSummaryText(buildSummaryText(newOrder));
       resetForm();
-      if (receipt) setViewingReceipt(receipt);
       return;
     }
     resetForm();
@@ -266,6 +287,10 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
       discount: order.discount.toString(),
       status: order.status,
       notes: order.notes || '',
+      inscription: order.inscription || '',
+      fulfillmentType: order.fulfillmentType || 'pickup',
+      fulfillmentWhen: order.fulfillmentWhen || '',
+      deliveryAddress: order.deliveryAddress || '',
     });
     setEditingId(order.id);
     setIsAdding(true);
@@ -289,7 +314,7 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
     if (item.productId === 'custom' && item.customName) {
       return item.customName;
     }
-    return products.find((p) => p.id === item.productId)?.name || 'מוצר לא נמצא';
+    return products.find((p) => p.id === item.productId)?.name || 'פריט לא נמצא';
   };
 
   // בניית מבנה קבלה מתוך הזמנה (לשימוש חוזר: הפקה ידנית + הפקה אוטומטית)
@@ -314,6 +339,13 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
       total: order.totalAmount,
       createdAt: Date.now(),
     };
+  };
+
+  const buildSummaryText = (order: Order): string =>
+    buildOrderSummary(order, getProductName, BUSINESS_INFO.address);
+
+  const handleShowSummary = (order: Order) => {
+    setSummaryText(buildSummaryText(order));
   };
 
   const handleReceipt = (order: Order) => {
@@ -429,7 +461,7 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
                     className={`toggle-btn ${!isCustomItem ? 'active' : ''}`}
                     onClick={() => setIsCustomItem(false)}
                   >
-                    מארז קיים
+                    מהקטלוג
                   </button>
                   <button
                     type="button"
@@ -468,7 +500,7 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
                     </button>
                   </div>
                 ) : activeProducts.length === 0 ? (
-                  <p className="warning">⚠️ יש להוסיף מארזים קודם (בטאב "מארזים")</p>
+                  <p className="warning">⚠️ יש להוסיף פריטים קודם (בטאב "קטלוג מכירה")</p>
                 ) : (
                   <div className="product-item-inputs">
                     <div className="autocomplete-wrapper">
@@ -484,7 +516,7 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
                         }}
                         onFocus={() => setShowProductDropdown(true)}
                         onBlur={() => setTimeout(() => setShowProductDropdown(false), 200)}
-                        placeholder="הקלד לחיפוש מארז..."
+                        placeholder="הקלד לחיפוש פריט..."
                         className="autocomplete-input"
                       />
                       {showProductDropdown && productSearch && filteredProducts.length > 0 && (
@@ -536,19 +568,35 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
               <ul className="order-items-list">
                 {form.items.map((item, index) => (
                   <li key={index}>
-                    <span className="item-name">
-                      {getProductName(item)}
-                      {item.productId === 'custom' && <span className="custom-badge">אחר</span>}
-                    </span>
-                    <span className="item-qty">x{item.quantity}</span>
-                    <span className="item-price">₪{item.totalPrice}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeItemFromOrder(index)}
-                      className="btn-icon"
-                    >
-                      ❌
-                    </button>
+                    <div className="order-item-main">
+                      <span className="item-name">
+                        {getProductName(item)}
+                        {item.productId === 'custom' && <span className="custom-badge">אחר</span>}
+                      </span>
+                      <span className="item-qty">x{item.quantity}</span>
+                      <span className="item-price">₪{item.totalPrice}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeItemFromOrder(index)}
+                        className="btn-icon"
+                      >
+                        ❌
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      className="item-note-input"
+                      value={item.note || ''}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          items: form.items.map((it, i) =>
+                            i === index ? { ...it, note: e.target.value } : it
+                          ),
+                        })
+                      }
+                      placeholder="הערה ללקוח בהודעת הסיכום (אופציונלי)"
+                    />
                   </li>
                 ))}
               </ul>
@@ -588,8 +636,57 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
             </div>
           </div>
 
+          {/* פרטים להודעת הסיכום ללקוח */}
+          <div className="form-section">
+            <h4>📱 פרטים להודעת סיכום ללקוח</h4>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>כיתוב (אופציונלי)</label>
+                <input
+                  type="text"
+                  value={form.inscription}
+                  onChange={(e) => setForm({ ...form, inscription: e.target.value })}
+                  placeholder="למשל: מזל טוב ירדן"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>איסוף / משלוח</label>
+                <select
+                  value={form.fulfillmentType}
+                  onChange={(e) => setForm({ ...form, fulfillmentType: e.target.value as 'pickup' | 'delivery' })}
+                >
+                  <option value="pickup">איסוף עצמי</option>
+                  <option value="delivery">משלוח</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>{form.fulfillmentType === 'delivery' ? 'מועד מסירה' : 'מועד איסוף'}</label>
+                <input
+                  type="text"
+                  value={form.fulfillmentWhen}
+                  onChange={(e) => setForm({ ...form, fulfillmentWhen: e.target.value })}
+                  placeholder="למשל: יום חמישי 16/7 בערב"
+                />
+              </div>
+
+              {form.fulfillmentType === 'delivery' && (
+                <div className="form-group">
+                  <label>כתובת למשלוח</label>
+                  <input
+                    type="text"
+                    value={form.deliveryAddress}
+                    onChange={(e) => setForm({ ...form, deliveryAddress: e.target.value })}
+                    placeholder="כתובת הלקוח"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="form-group">
-            <label>הערות (אופציונלי)</label>
+            <label>הערות פנימיות (לא מופיע ללקוח)</label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -705,6 +802,9 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
               {order.notes && <p className="order-notes">{order.notes}</p>}
 
               <div className="order-actions">
+                <button onClick={() => handleShowSummary(order)} className="btn btn-small">
+                  📱 סיכום ללקוח
+                </button>
                 <button onClick={() => handleReceipt(order)} className="btn btn-small">
                   🧾 {receipts.some((r) => r.orderId === order.id) ? 'הצג קבלה' : 'הפק קבלה'}
                 </button>
@@ -725,6 +825,9 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
 
       {viewingReceipt && (
         <ReceiptDocument receipt={viewingReceipt} signature={signature} onClose={() => setViewingReceipt(null)} />
+      )}
+      {summaryText && (
+        <OrderSummary text={summaryText} onClose={() => setSummaryText(null)} />
       )}
     </div>
   );

@@ -109,13 +109,13 @@ export function Calculator({ recipes, ingredients, packagings, settings }: Props
 
       {recipes.length === 0 ? (
         <div className="empty-state">
-          <p>יש להוסיף מתכונים קודם כדי לחשב תמחור</p>
+          <p>יש להוסיף מוצרים קודם כדי לחשב תמחור</p>
         </div>
       ) : (
         <div className="calculator-container">
           <div className="calculator-inputs">
             <div className="form-group">
-              <label>בחר מתכון</label>
+              <label>בחר מוצר</label>
               <select
                 value={selectedRecipeId}
                 onChange={(e) => {
@@ -123,7 +123,7 @@ export function Calculator({ recipes, ingredients, packagings, settings }: Props
                   setCustomPrice('');
                 }}
               >
-                <option value="">בחר מתכון...</option>
+                <option value="">בחר מוצר...</option>
                 {recipes.map((recipe) => (
                   <option key={recipe.id} value={recipe.id}>
                     {recipe.name}

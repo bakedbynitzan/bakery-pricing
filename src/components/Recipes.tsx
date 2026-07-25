@@ -154,7 +154,7 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('למחוק את המתכון?')) {
+    if (confirm('למחוק את המוצר?')) {
       onUpdate(recipes.filter((rec) => rec.id !== id));
     }
   };
@@ -196,21 +196,21 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
   return (
     <div className="section">
       <div className="section-header">
-        <h2>📖 מתכונים</h2>
+        <h2>📖 מוצרים</h2>
         {!isAdding && (
           <button onClick={() => setIsAdding(true)} className="btn btn-primary">
-            + הוסף מתכון
+            + הוסף מוצר
           </button>
         )}
       </div>
 
       {isAdding && (
         <form onSubmit={handleSubmit} className="form-card">
-          <h3>{editingId ? 'עריכת מתכון' : 'הוספת מתכון חדש'}</h3>
+          <h3>{editingId ? 'עריכת מוצר' : 'הוספת מוצר חדש'}</h3>
 
           <div className="form-grid">
             <div className="form-group">
-              <label>שם המתכון</label>
+              <label>שם המוצר</label>
               <input
                 type="text"
                 value={form.name}
@@ -266,9 +266,9 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
             </div>
           </div>
 
-          {/* הוספת חומרי גלם למתכון */}
+          {/* הוספת חומרי גלם למוצר */}
           <div className="form-section">
-            <h4>חומרי גלם במתכון</h4>
+            <h4>חומרי גלם במוצר</h4>
             
             {ingredients.length === 0 ? (
               <p className="warning">⚠️ יש להוסיף חומרי גלם קודם</p>
@@ -461,7 +461,7 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
 
       {recipes.length === 0 ? (
         <div className="empty-state">
-          <p>עדיין אין מתכונים. הוסף את המתכון הראשון שלך!</p>
+          <p>עדיין אין מוצרים. הוסף את המוצר הראשון שלך!</p>
         </div>
       ) : (
         <div className="recipes-grid">

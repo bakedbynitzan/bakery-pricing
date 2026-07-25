@@ -1405,6 +1405,17 @@ td.price-cell {
   color: var(--danger);
 }
 
+.profit-badge.na {
+  background: var(--primary-light);
+  color: var(--text-light);
+}
+
+.no-cost-hint {
+  margin-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.5rem;
+}
+
 .consumer-price {
   font-weight: 600;
   color: var(--accent);
@@ -1606,15 +1617,17 @@ td.price-cell {
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background: var(--success-light);
+  background: #e8f8f0;
+  color: #14532d;
   border-radius: 8px;
   margin-bottom: 1rem;
 }
 
-.calculated-price .price-value {
+.calculated-price .price-value,
+.calculated-price .price-apply {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--success);
+  color: #166534;
 }
 
 /* מחיר ידני */
@@ -1664,6 +1677,16 @@ td.price-cell {
   color: var(--primary);
   font-size: 1.1rem;
 }
+
+.actual-profit-display .net-profit-row { margin-bottom: 0.35rem; }
+.actual-profit-display .net-profit-row strong { color: var(--success); }
+.net-profit-calc { color: var(--text-light); font-size: 0.8rem; margin-right: 0.4rem; }
+
+/* הערת עזר לתמחור */
+.pricing-help-note { color: var(--text-light); font-size: 0.82rem; margin: -0.5rem 0 0.85rem; }
+
+/* רווח נקי בכרטיס מארז */
+.net-profit-value { color: var(--success); font-weight: 700; }
 
 .profit-good {
   color: var(--success);
@@ -2820,6 +2843,71 @@ html, body {
 
 /* פעולות בשורת קבלה */
 .receipt-row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap; }
+
+/* פריט בהזמנה — שורה ראשית + הערה ללקוח */
+.order-items-list li { flex-direction: column; align-items: stretch; gap: 0.4rem; }
+.order-item-main { display: flex; align-items: center; gap: 0.75rem; }
+.order-item-main .item-name { flex: 1; }
+.item-note-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+.item-note-input:focus { outline: none; border-color: var(--accent); border-style: solid; }
+
+/* מודאל סיכום הזמנה ללקוח (וואטסאפ) */
+.summary-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 1000;
+  overflow-y: auto;
+}
+.summary-modal {
+  background: var(--bg-card);
+  color: var(--text);
+  border-radius: var(--radius);
+  max-width: 560px;
+  width: 100%;
+  padding: 1.25rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+.summary-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.summary-title { font-weight: 700; font-size: 1.1rem; }
+.summary-hint { color: var(--text-light); font-size: 0.9rem; margin: 0 0 0.75rem; }
+.summary-text {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--primary-light);
+  color: var(--text);
+  resize: vertical;
+  white-space: pre-wrap;
+}
+.summary-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.9rem; }
+
+/* כרטיס לקוח בדוחות */
+.customer-card { background: var(--primary-light); }
+.customer-card-stats { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin: 0.5rem 0; }
+.cc-stat { font-size: 0.95rem; color: var(--text); }
+
+/* פילוח הכנסות — כותרת + מתגי גרנולריות */
+.breakdown-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+.granularity-toggle { display: flex; gap: 0.35rem; }
 
 /* ===== שלב ב׳: הוצאות ===== */
 .expenses-list { display: flex; flex-direction: column; gap: 0.6rem; }
