@@ -88,6 +88,15 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
     });
   };
 
+  const updateIngredientInRecipe = (index: number, patch: Partial<RecipeIngredient>) => {
+    setForm({
+      ...form,
+      ingredients: form.ingredients.map((ing, i) =>
+        i === index ? { ...ing, ...patch } : ing
+      ),
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const now = Date.now();
@@ -356,7 +365,39 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
                       return (
                         <tr key={index}>
                           <td>{getIngredientName(ing.ingredientId)}</td>
-                          <td>{ing.quantity} {unitLabels[ing.unit]}</td>
+                          <td>
+                            <div className="inline-edit">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={ing.quantity}
+                                onChange={(e) =>
+                                  updateIngredientInRecipe(index, {
+                                    quantity: parseFloat(e.target.value) || 0,
+                                  })
+                                }
+                                className="inline-qty"
+                                aria-label="כמות"
+                              />
+                              <select
+                                value={ing.unit}
+                                onChange={(e) =>
+                                  updateIngredientInRecipe(index, {
+                                    unit: e.target.value as Unit,
+                                  })
+                                }
+                                className="inline-unit"
+                                aria-label="יחידה"
+                              >
+                                {Object.entries(unitLabels).map(([value, label]) => (
+                                  <option key={value} value={value}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </td>
                           <td>
                             {valid ? (
                               `₪${cost.toFixed(2)}`

@@ -2767,6 +2767,28 @@ html, body {
 .guide-steps { margin: 0; padding-inline-start: 1.2rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .guide-steps li { font-size: 0.9rem; line-height: 1.45; }
 
+/* עריכה ישירה של חומר גלם בטבלת המתכון */
+.inline-edit { display: flex; gap: 0.4rem; align-items: center; justify-content: center; }
+.inline-qty {
+  width: 72px;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  text-align: center;
+  font: inherit;
+}
+.inline-unit {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+}
+.inline-qty:focus, .inline-unit:focus { outline: none; border-color: var(--accent); }
+
 /* ===== שלב ב׳: הוצאות ===== */
 .expenses-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .expense-card {
@@ -2858,14 +2880,36 @@ html, body {
 .receipt-signature { margin-top: 2rem; font-size: 0.9rem; }
 
 @media print {
+  @page { margin: 14mm; }
+  html, body { background: #fff !important; }
   body * { visibility: hidden !important; }
   #receipt-print, #receipt-print * { visibility: visible !important; }
-  #receipt-print {
-    position: absolute;
-    inset: 0;
-    margin: 0;
-    padding: 1.5rem;
-    width: 100%;
+
+  /* מאפסים את שכבות המודאל כדי שהקבלה תזרום כרגיל על הדף (לא תיחתך) */
+  .receipt-overlay {
+    position: static !important;
+    display: block !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    inset: auto !important;
   }
+  .receipt-modal {
+    max-width: none !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+  #receipt-print {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .receipt-items { page-break-inside: avoid; }
   .no-print { display: none !important; }
 }

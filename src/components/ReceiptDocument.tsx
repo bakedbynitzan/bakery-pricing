@@ -9,11 +9,22 @@ interface Props {
 const pad = (n: number) => n.toString().padStart(4, '0');
 
 export function ReceiptDocument({ receipt, onClose }: Props) {
+  const handlePrint = () => {
+    const prevTitle = document.title;
+    document.title = `קבלה ${pad(receipt.number)} — ${BUSINESS_INFO.businessName}`;
+    const restore = () => {
+      document.title = prevTitle;
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+    window.print();
+  };
+
   return (
     <div className="receipt-overlay" onClick={onClose}>
       <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
         <div className="receipt-toolbar no-print">
-          <button className="btn btn-primary" onClick={() => window.print()}>🖨️ הדפסה / שמירה כ-PDF</button>
+          <button className="btn btn-primary" onClick={handlePrint}>🖨️ הדפסה / שמירה כ-PDF</button>
           <button className="btn btn-secondary" onClick={onClose}>סגירה</button>
         </div>
 
