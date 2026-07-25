@@ -5,6 +5,8 @@ import { BUSINESS_INFO } from '../config/business';
 interface Props {
   receipt: Receipt;
   signature?: string;
+  isDraft?: boolean;
+  onConfirm?: () => void;
   onClose: () => void;
 }
 
@@ -13,7 +15,7 @@ const pad = (n: number) => n.toString().padStart(4, '0');
 // חתימת ברירת מחדל (מגובה עם האפליקציה). אפשר להחליף בהגדרות.
 const DEFAULT_SIGNATURE = import.meta.env.BASE_URL + 'signature.png';
 
-export function ReceiptDocument({ receipt, signature, onClose }: Props) {
+export function ReceiptDocument({ receipt, signature, isDraft, onConfirm, onClose }: Props) {
   const sig = signature || DEFAULT_SIGNATURE;
   const handlePrint = () => {
     // שם קובץ ה-PDF = שם העסק בלבד (הלקוח לא מתעניין במספר הקבלה)
@@ -31,11 +33,23 @@ export function ReceiptDocument({ receipt, signature, onClose }: Props) {
     <div className="receipt-overlay" onClick={onClose}>
       <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
         <div className="receipt-toolbar no-print">
-          <span className="receipt-preview-title">👁️ תצוגה מקדימה — בדקי שהכל תקין לפני שליחה</span>
-          <div className="receipt-toolbar-actions">
-            <button className="btn btn-primary" onClick={handlePrint}>🖨️ הדפסה / שמירה כ-PDF</button>
-            <button className="btn btn-secondary" onClick={onClose}>סגירה</button>
-          </div>
+          {isDraft ? (
+            <>
+              <span className="receipt-preview-title">👁️ תצוגה מקדימה (טיוטה) — בדקי שכל המוצרים נכונים</span>
+              <div className="receipt-toolbar-actions">
+                <button className="btn btn-primary" onClick={onConfirm}>✓ צור קבלה</button>
+                <button className="btn btn-secondary" onClick={onClose}>↩️ חזרה לעריכה</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="receipt-preview-title">👁️ תצוגה מקדימה — בדקי שהכל תקין לפני שליחה</span>
+              <div className="receipt-toolbar-actions">
+                <button className="btn btn-primary" onClick={handlePrint}>🖨️ הדפסה / שמירה כ-PDF</button>
+                <button className="btn btn-secondary" onClick={onClose}>סגירה</button>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="receipt-print" id="receipt-print">

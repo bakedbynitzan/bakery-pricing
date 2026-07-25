@@ -16,6 +16,7 @@ const emptyRow = { description: '', quantity: '1', unitPrice: '' };
 export function Receipts({ receipts, signature, addReceipt, onDelete }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [viewing, setViewing] = useState<Receipt | null>(null);
+  const [preview, setPreview] = useState<Receipt | null>(null);
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     customerName: '',
@@ -33,19 +34,26 @@ export function Receipts({ receipts, signature, addReceipt, onDelete }: Props) {
 
   const total = rows.reduce((s, r) => s + (parseFloat(r.quantity) || 0) * (parseFloat(r.unitPrice) || 0), 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const items: ReceiptItem[] = rows
+  const buildItems = (): ReceiptItem[] =>
+    rows
       .filter((r) => r.description && r.unitPrice)
       .map((r) => {
         const quantity = parseFloat(r.quantity) || 1;
         const unitPrice = parseFloat(r.unitPrice) || 0;
         return { description: r.description, quantity, unitPrice, total: quantity * unitPrice };
       });
-    if (!form.customerName || items.length === 0) return;
 
-    const receipt = addReceipt({
-      id: crypto.randomUUID(),
+  // מספר הקבלה הצפוי (לתצוגה בלבד — נקבע סופית ביצירה)
+  const nextNumber = Math.max(0, ...receipts.map((r) => r.number)) + 1;
+
+  // שלב 1: תצוגה מקדימה (טיוטה) — בלי לשמור / להקצות מספר סופי
+  const handlePreview = (e: React.FormEvent) => {
+    e.preventDefault();
+    const items = buildItems();
+    if (!form.customerName || items.length === 0) return;
+    setPreview({
+      id: 'draft',
+      number: nextNumber,
       date: form.date,
       customerName: form.customerName,
       customerPhone: form.customerPhone,
@@ -55,6 +63,23 @@ export function Receipts({ receipts, signature, addReceipt, onDelete }: Props) {
       note: form.note,
       createdAt: Date.now(),
     });
+  };
+
+  // שלב 2: יצירה בפועל (מתוך התצוגה המקדימה)
+  const handleConfirmCreate = () => {
+    if (!preview) return;
+    const receipt = addReceipt({
+      id: crypto.randomUUID(),
+      date: preview.date,
+      customerName: preview.customerName,
+      customerPhone: preview.customerPhone,
+      items: preview.items,
+      total: preview.total,
+      paymentMethod: preview.paymentMethod,
+      note: preview.note,
+      createdAt: Date.now(),
+    });
+    setPreview(null);
     resetForm();
     setViewing(receipt);
   };
@@ -81,7 +106,7 @@ export function Receipts({ receipts, signature, addReceipt, onDelete }: Props) {
       </div>
 
       {isAdding && (
-        <form onSubmit={handleSubmit} className="form-card">
+        <form onSubmit={handlePreview} className="form-card">
           <h3>קבלה חדשה</h3>
           <div className="form-grid">
             <div className="form-group">
@@ -154,7 +179,7 @@ export function Receipts({ receipts, signature, addReceipt, onDelete }: Props) {
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-primary">צור והדפס קבלה</button>
+            <button type="submit" className="btn btn-primary">👁️ תצוגה מקדימה</button>
             <button type="button" onClick={resetForm} className="btn btn-secondary">ביטול</button>
           </div>
         </form>
@@ -200,6 +225,15 @@ export function Receipts({ receipts, signature, addReceipt, onDelete }: Props) {
         </div>
       )}
 
+      {preview && (
+        <ReceiptDocument
+          receipt={preview}
+          signature={signature}
+          isDraft
+          onConfirm={handleConfirmCreate}
+          onClose={() => setPreview(null)}
+        />
+      )}
       {viewing && <ReceiptDocument receipt={viewing} signature={signature} onClose={() => setViewing(null)} />}
     </div>
   );
