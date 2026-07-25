@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppData, PricingSettings, Expense, Receipt } from '../types';
+import { AppData, PricingSettings, Expense, Receipt, Order } from '../types';
 
 const JSONBIN_API_KEY = '$2a$10$oZfLFV8vjYJgPdjv3gZK9O5OD2tUEsH30F7mZMQh4CDJqtrN3qIfq';
 const JSONBIN_BIN_ID_KEY = 'bakery-jsonbin-id';
@@ -196,6 +196,41 @@ export function useCloudStorage() {
     return full;
   };
 
+  // יצירת הזמנה — ובמידת הצורך גם קבלה מקושרת — בשמירה אטומית אחת
+  // (למנוע דריסה בין שני עדכונים נפרדים באותו tick)
+  const addOrder = (order: Order, receipt?: Omit<Receipt, 'number'>): Receipt | undefined => {
+    let receipts = data.receipts || [];
+    let counter = data.receiptCounter ?? 1;
+    let created: Receipt | undefined;
+    if (receipt) {
+      created = { ...receipt, number: counter };
+      receipts = [created, ...receipts];
+      counter = counter + 1;
+    }
+    const newData: AppData = {
+      ...data,
+      orders: [order, ...(data.orders || [])],
+      receipts,
+      receiptCounter: counter,
+    };
+    updateData(newData);
+    return created;
+  };
+
+  // מחיקת קבלה + מספור מחדש רציף (1..N) ועדכון המונה
+  const deleteReceipt = (id: string) => {
+    const remaining = (data.receipts || []).filter((r) => r.id !== id);
+    const renumbered = [...remaining]
+      .sort((a, b) => a.number - b.number)
+      .map((r, i) => ({ ...r, number: i + 1 }));
+    const newData: AppData = {
+      ...data,
+      receipts: renumbered,
+      receiptCounter: renumbered.length + 1,
+    };
+    updateData(newData);
+  };
+
   // רענון מהענן
   const refreshFromCloud = useCallback(async (silent = false) => {
     if (!binId) return;
@@ -341,6 +376,8 @@ export function useCloudStorage() {
     updateReceipts,
     updateSignature,
     addReceipt,
+    addOrder,
+    deleteReceipt,
     updateSettings,
     exportData,
     importData,

@@ -2803,6 +2803,24 @@ html, body {
 }
 .signature-preview img { max-height: 90px; width: auto; object-fit: contain; }
 
+/* צ'קבוקס הפקת קבלה אוטומטית בהזמנה */
+.auto-receipt-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0 1rem;
+  background: var(--primary-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.auto-receipt-toggle input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+
+/* פעולות בשורת קבלה */
+.receipt-row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap; }
+
 /* ===== שלב ב׳: הוצאות ===== */
 .expenses-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .expense-card {

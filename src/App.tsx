@@ -43,6 +43,8 @@ function App() {
     updateExpenses,
     updateSignature,
     addReceipt,
+    addOrder,
+    deleteReceipt,
     updateSettings,
     exportData,
     importData,
@@ -155,6 +157,7 @@ function App() {
             receipts={data.receipts || []}
             signature={data.signature}
             addReceipt={addReceipt}
+            onCreateOrder={addOrder}
             onUpdate={updateOrders}
           />
         )}
@@ -192,6 +195,7 @@ function App() {
             receipts={data.receipts || []}
             signature={data.signature}
             addReceipt={addReceipt}
+            onDelete={deleteReceipt}
           />
         )}
         {activeTab === 'calculator' && (

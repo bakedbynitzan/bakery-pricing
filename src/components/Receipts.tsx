@@ -6,13 +6,14 @@ interface Props {
   receipts: Receipt[];
   signature?: string;
   addReceipt: (r: Omit<Receipt, 'number'>) => Receipt;
+  onDelete: (id: string) => void;
 }
 
 const pad = (n: number) => n.toString().padStart(4, '0');
 
 const emptyRow = { description: '', quantity: '1', unitPrice: '' };
 
-export function Receipts({ receipts, signature, addReceipt }: Props) {
+export function Receipts({ receipts, signature, addReceipt, onDelete }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [viewing, setViewing] = useState<Receipt | null>(null);
   const [form, setForm] = useState({
@@ -58,6 +59,16 @@ export function Receipts({ receipts, signature, addReceipt }: Props) {
     setViewing(receipt);
   };
 
+  const handleDelete = (r: Receipt) => {
+    if (
+      confirm(
+        `למחוק את קבלה מס׳ ${pad(r.number)}?\nשאר הקבלות ימוספרו מחדש אוטומטית (ללא רווחים במספור).`
+      )
+    ) {
+      onDelete(r.id);
+    }
+  };
+
   const sorted = [...receipts].sort((a, b) => b.number - a.number);
 
   return (
@@ -89,7 +100,8 @@ export function Receipts({ receipts, signature, addReceipt }: Props) {
               <label>אמצעי תשלום</label>
               <select value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
                 <option value="מזומן">מזומן</option>
-                <option value="ביט">ביט</option>
+                <option value="BIT">BIT</option>
+                <option value="Paybox">Paybox</option>
                 <option value="העברה בנקאית">העברה בנקאית</option>
                 <option value="אשראי">אשראי</option>
                 <option value="צ׳ק">צ׳ק</option>
@@ -175,7 +187,10 @@ export function Receipts({ receipts, signature, addReceipt }: Props) {
                     <td>{r.customerName}</td>
                     <td>₪{r.total.toFixed(2)}</td>
                     <td>
-                      <button className="btn btn-small" onClick={() => setViewing(r)}>👁️ הצג</button>
+                      <div className="receipt-row-actions">
+                        <button className="btn btn-small" onClick={() => setViewing(r)}>👁️ הצג</button>
+                        <button className="btn btn-small btn-danger" onClick={() => handleDelete(r)}>🗑️ מחק</button>
+                      </div>
                     </td>
                   </tr>
                 ))}

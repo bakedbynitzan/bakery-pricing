@@ -11,6 +11,7 @@ interface Props {
   receipts: Receipt[];
   signature?: string;
   addReceipt: (r: Omit<Receipt, 'number'>) => Receipt;
+  onCreateOrder: (order: Order, receipt?: Omit<Receipt, 'number'>) => Receipt | undefined;
   onUpdate: (orders: Order[]) => void;
 }
 
@@ -22,10 +23,11 @@ interface CustomerInfo {
   lastOrderDate: string;
 }
 
-export function Orders({ orders, products, recipes, ingredients, receipts, signature, addReceipt, onUpdate }: Props) {
+export function Orders({ orders, products, recipes, ingredients, receipts, signature, addReceipt, onCreateOrder, onUpdate }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingReceipt, setViewingReceipt] = useState<Receipt | null>(null);
+  const [autoReceipt, setAutoReceipt] = useState(true);
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     customerName: '',
@@ -241,7 +243,14 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
         createdAt: now,
         updatedAt: now,
       };
-      onUpdate([newOrder, ...orders]);
+      // יצירת ההזמנה — ובמידת הצורך קבלה מקושרת — בשמירה אטומית אחת
+      const receipt = onCreateOrder(
+        newOrder,
+        autoReceipt ? buildReceiptFromOrder(newOrder) : undefined
+      );
+      resetForm();
+      if (receipt) setViewingReceipt(receipt);
+      return;
     }
     resetForm();
   };
@@ -283,13 +292,8 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
     return products.find((p) => p.id === item.productId)?.name || 'מוצר לא נמצא';
   };
 
-  const handleReceipt = (order: Order) => {
-    // אם כבר הופקה קבלה להזמנה — הצג אותה (שומר על מספור רץ תקין)
-    const existing = receipts.find((r) => r.orderId === order.id);
-    if (existing) {
-      setViewingReceipt(existing);
-      return;
-    }
+  // בניית מבנה קבלה מתוך הזמנה (לשימוש חוזר: הפקה ידנית + הפקה אוטומטית)
+  const buildReceiptFromOrder = (order: Order): Omit<Receipt, 'number'> => {
     const items: ReceiptItem[] = order.items.map((it) => ({
       description: getProductName(it),
       quantity: it.quantity,
@@ -300,7 +304,7 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
     if (order.deliveryCost > 0) items.push({ description: 'משלוח', quantity: 1, unitPrice: order.deliveryCost, total: order.deliveryCost });
     if (order.discount > 0) items.push({ description: 'הנחה', quantity: 1, unitPrice: -order.discount, total: -order.discount });
 
-    const receipt = addReceipt({
+    return {
       id: crypto.randomUUID(),
       orderId: order.id,
       date: new Date().toISOString().split('T')[0],
@@ -309,7 +313,17 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
       items,
       total: order.totalAmount,
       createdAt: Date.now(),
-    });
+    };
+  };
+
+  const handleReceipt = (order: Order) => {
+    // אם כבר הופקה קבלה להזמנה — הצג אותה (שומר על מספור רץ תקין)
+    const existing = receipts.find((r) => r.orderId === order.id);
+    if (existing) {
+      setViewingReceipt(existing);
+      return;
+    }
+    const receipt = addReceipt(buildReceiptFromOrder(order));
     setViewingReceipt(receipt);
   };
 
@@ -607,9 +621,20 @@ export function Orders({ orders, products, recipes, ingredients, receipts, signa
             );
           })()}
 
+          {!editingId && (
+            <label className="auto-receipt-toggle">
+              <input
+                type="checkbox"
+                checked={autoReceipt}
+                onChange={(e) => setAutoReceipt(e.target.checked)}
+              />
+              <span>🧾 הפק קבלה אוטומטית מההזמנה (כדי לא להזין פעמיים)</span>
+            </label>
+          )}
+
           <div className="form-actions">
             <button type="submit" className="btn btn-primary">
-              {editingId ? 'עדכן' : 'צור הזמנה'}
+              {editingId ? 'עדכן' : autoReceipt ? 'צור הזמנה + קבלה' : 'צור הזמנה'}
             </button>
             <button type="button" onClick={resetForm} className="btn btn-secondary">
               ביטול
