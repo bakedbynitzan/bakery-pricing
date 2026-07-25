@@ -3,12 +3,17 @@ import { BUSINESS_INFO } from '../config/business';
 
 interface Props {
   receipt: Receipt;
+  signature?: string;
   onClose: () => void;
 }
 
 const pad = (n: number) => n.toString().padStart(4, '0');
 
-export function ReceiptDocument({ receipt, onClose }: Props) {
+// חתימת ברירת מחדל (מגובה עם האפליקציה). אפשר להחליף בהגדרות.
+const DEFAULT_SIGNATURE = import.meta.env.BASE_URL + 'signature.png';
+
+export function ReceiptDocument({ receipt, signature, onClose }: Props) {
+  const sig = signature || DEFAULT_SIGNATURE;
   const handlePrint = () => {
     const prevTitle = document.title;
     document.title = `קבלה ${pad(receipt.number)} — ${BUSINESS_INFO.businessName}`;
@@ -45,7 +50,7 @@ export function ReceiptDocument({ receipt, onClose }: Props) {
           </div>
 
           <div className="receipt-customer">
-            <span>התקבל מ: <strong>{receipt.customerName}</strong></span>
+            <span>לכבוד: <strong>{receipt.customerName || '______________'}</strong></span>
             {receipt.customerPhone && <span>טלפון: {receipt.customerPhone}</span>}
           </div>
 
@@ -86,7 +91,8 @@ export function ReceiptDocument({ receipt, onClose }: Props) {
           </div>
 
           <div className="receipt-signature">
-            <span>חתימה: ____________________</span>
+            <span className="receipt-signature-label">חתימה:</span>
+            <img src={sig} alt="חתימה" className="receipt-signature-img" />
           </div>
         </div>
       </div>

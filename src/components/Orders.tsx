@@ -9,6 +9,7 @@ interface Props {
   recipes: Recipe[];
   ingredients: Ingredient[];
   receipts: Receipt[];
+  signature?: string;
   addReceipt: (r: Omit<Receipt, 'number'>) => Receipt;
   onUpdate: (orders: Order[]) => void;
 }
@@ -21,7 +22,7 @@ interface CustomerInfo {
   lastOrderDate: string;
 }
 
-export function Orders({ orders, products, recipes, ingredients, receipts, addReceipt, onUpdate }: Props) {
+export function Orders({ orders, products, recipes, ingredients, receipts, signature, addReceipt, onUpdate }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingReceipt, setViewingReceipt] = useState<Receipt | null>(null);
@@ -698,7 +699,7 @@ export function Orders({ orders, products, recipes, ingredients, receipts, addRe
       )}
 
       {viewingReceipt && (
-        <ReceiptDocument receipt={viewingReceipt} onClose={() => setViewingReceipt(null)} />
+        <ReceiptDocument receipt={viewingReceipt} signature={signature} onClose={() => setViewingReceipt(null)} />
       )}
     </div>
   );

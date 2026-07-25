@@ -41,6 +41,7 @@ function App() {
     updateProducts,
     updateOrders,
     updateExpenses,
+    updateSignature,
     addReceipt,
     updateSettings,
     exportData,
@@ -152,6 +153,7 @@ function App() {
             recipes={data.recipes || []}
             ingredients={data.ingredients || []}
             receipts={data.receipts || []}
+            signature={data.signature}
             addReceipt={addReceipt}
             onUpdate={updateOrders}
           />
@@ -188,6 +190,7 @@ function App() {
         {activeTab === 'receipts' && (
           <Receipts
             receipts={data.receipts || []}
+            signature={data.signature}
             addReceipt={addReceipt}
           />
         )}
@@ -217,6 +220,8 @@ function App() {
           <Settings
             settings={data.settings}
             packagings={data.packagings}
+            signature={data.signature}
+            onUpdateSignature={updateSignature}
             onUpdateSettings={updateSettings}
             onUpdatePackagings={updatePackagings}
             onExport={exportData}

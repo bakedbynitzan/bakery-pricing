@@ -172,6 +172,7 @@ export interface AppData {
   expenses?: Expense[]; // שלב ב׳ (אופציונלי לתאימות-לאחור)
   receipts?: Receipt[]; // שלב ד׳
   receiptCounter?: number; // המספר הרץ הבא לקבלה
+  signature?: string; // תמונת חתימה (data URL) שמופיעה בכל קבלה
 }
 
 // יחידות מידה בעברית

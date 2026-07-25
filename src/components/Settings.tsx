@@ -4,6 +4,8 @@ import { PricingSettings, Packaging } from '../types';
 interface Props {
   settings: PricingSettings;
   packagings: Packaging[];
+  signature?: string;
+  onUpdateSignature: (signature: string | undefined) => void;
   onUpdateSettings: (settings: PricingSettings) => void;
   onUpdatePackagings: (packagings: Packaging[]) => void;
   onExport: () => void;
@@ -12,9 +14,13 @@ interface Props {
   onConnectWithCode?: (code: string) => Promise<boolean>;
 }
 
+const DEFAULT_SIGNATURE = import.meta.env.BASE_URL + 'signature.png';
+
 export function Settings({
   settings,
   packagings,
+  signature,
+  onUpdateSignature,
   onUpdateSettings,
   onUpdatePackagings,
   onExport,
@@ -47,6 +53,29 @@ export function Settings({
 
   const handleDeletePackaging = (id: string) => {
     onUpdatePackagings(packagings.filter((p) => p.id !== id));
+  };
+
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // הקטנה לרוחב סביר כדי לשמור על נפח נתונים קטן
+        const maxW = 320;
+        const ratio = Math.min(1, maxW / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        onUpdateSignature(canvas.toDataURL('image/png'));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +190,37 @@ export function Settings({
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* חתימה לקבלות */}
+        <div className="settings-card">
+          <h3>✍️ חתימה לקבלות</h3>
+
+          <p className="description">
+            החתימה מופיעה אוטומטית בכל קבלה. אפשר להעלות תמונת חתימה חדשה
+            (רצוי על רקע לבן) או לחזור לחתימת ברירת המחדל.
+          </p>
+
+          <div className="signature-preview">
+            <img src={signature || DEFAULT_SIGNATURE} alt="חתימה" />
+          </div>
+
+          <div className="backup-actions">
+            <label className="btn btn-secondary file-input-label">
+              🖊️ העלאת חתימה
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleSignatureUpload}
+                style={{ display: 'none' }}
+              />
+            </label>
+            {signature && (
+              <button onClick={() => onUpdateSignature(undefined)} className="btn btn-secondary">
+                ↩️ חתימת ברירת מחדל
+              </button>
+            )}
+          </div>
         </div>
 
         {/* גיבוי ושחזור */}

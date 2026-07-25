@@ -4,6 +4,7 @@ import { ReceiptDocument } from './ReceiptDocument';
 
 interface Props {
   receipts: Receipt[];
+  signature?: string;
   addReceipt: (r: Omit<Receipt, 'number'>) => Receipt;
 }
 
@@ -11,7 +12,7 @@ const pad = (n: number) => n.toString().padStart(4, '0');
 
 const emptyRow = { description: '', quantity: '1', unitPrice: '' };
 
-export function Receipts({ receipts, addReceipt }: Props) {
+export function Receipts({ receipts, signature, addReceipt }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [viewing, setViewing] = useState<Receipt | null>(null);
   const [form, setForm] = useState({
@@ -184,7 +185,7 @@ export function Receipts({ receipts, addReceipt }: Props) {
         </div>
       )}
 
-      {viewing && <ReceiptDocument receipt={viewing} onClose={() => setViewing(null)} />}
+      {viewing && <ReceiptDocument receipt={viewing} signature={signature} onClose={() => setViewing(null)} />}
     </div>
   );
 }

@@ -178,6 +178,11 @@ export function useCloudStorage() {
     updateData(newData);
   };
 
+  const updateSignature = (signature: string | undefined) => {
+    const newData = { ...data, signature };
+    updateData(newData);
+  };
+
   // הפקת קבלה חדשה עם מספר סידורי רץ (מעדכן גם את המונה באותה שמירה)
   const addReceipt = (receipt: Omit<Receipt, 'number'>): Receipt => {
     const number = data.receiptCounter ?? 1;
@@ -334,6 +339,7 @@ export function useCloudStorage() {
     updateOrders,
     updateExpenses,
     updateReceipts,
+    updateSignature,
     addReceipt,
     updateSettings,
     exportData,

@@ -2789,6 +2789,20 @@ html, body {
 }
 .inline-qty:focus, .inline-unit:focus { outline: none; border-color: var(--accent); }
 
+/* תצוגת חתימה בהגדרות */
+.signature-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  min-height: 90px;
+}
+.signature-preview img { max-height: 90px; width: auto; object-fit: contain; }
+
 /* ===== שלב ב׳: הוצאות ===== */
 .expenses-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .expense-card {
@@ -2877,7 +2891,10 @@ html, body {
 .receipt-total-value { font-weight: 700; font-size: 1.05rem; }
 .receipt-payment, .receipt-note { font-size: 0.9rem; margin: 0.25rem 0; }
 .receipt-legal { margin-top: 1rem; padding: 0.5rem; background: #f7f7f7; border-radius: 6px; font-size: 0.85rem; }
-.receipt-signature { margin-top: 2rem; font-size: 0.9rem; }
+.receipt-signature { margin-top: 2rem; font-size: 0.9rem; display: flex; align-items: flex-end; gap: 0.75rem; }
+.receipt-signature-label { white-space: nowrap; }
+.receipt-signature-img { height: 70px; width: auto; object-fit: contain; }
+.receipt-signature-line { letter-spacing: 1px; }
 
 @media print {
   @page { margin: 14mm; }
@@ -2909,6 +2926,8 @@ html, body {
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .receipt-items { page-break-inside: avoid; }
   .no-print { display: none !important; }
