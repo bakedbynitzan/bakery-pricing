@@ -2587,6 +2587,25 @@ td.price-cell {
     min-width: 500px;
   }
 
+  /* תזרים חודשי — פריסת מובייל שלא גולשת מהמסך */
+  .cashflow-row {
+    grid-template-columns: minmax(3.5rem, auto) 1fr auto;
+    grid-template-areas:
+      "month income net"
+      "month expense net";
+    row-gap: 0.15rem;
+    column-gap: 0.6rem;
+    font-size: 0.82rem;
+  }
+  .cf-month { grid-area: month; align-self: center; }
+  .cf-income { grid-area: income; }
+  .cf-expense { grid-area: expense; }
+  .cf-net { grid-area: net; align-self: center; }
+  .cf-bar-wrap { display: none; }
+
+  /* טבלאות רחבות — לגלול בתוך הכרטיס בלבד, לא את כל העמוד */
+  .orders-table-container { max-width: 100%; }
+
   /* Form actions mobile */
   .form-actions {
     flex-direction: column;
@@ -2684,6 +2703,7 @@ html, body {
   font-family: 'Heebo', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden; /* מונע גלילה אופקית לא רצויה של כל העמוד במובייל */
 }
 
 /* כותרת עליונה מרוככת */
