@@ -104,10 +104,6 @@ export function ReceiptDocument({ receipt, signature, isDraft, onConfirm, onClos
           )}
           {receipt.note && <p className="receipt-note">{receipt.note}</p>}
 
-          <div className="receipt-legal">
-            <p><strong>עוסק פטור</strong> — לא נגבה מע״מ.</p>
-          </div>
-
           <div className="receipt-signature">
             <span className="receipt-signature-label">חתימה:</span>
             <img src={sig} alt="חתימה" className="receipt-signature-img" />
