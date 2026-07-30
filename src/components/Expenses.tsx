@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef } from 'react';
-import { Expense, ExpenseCategory, expenseCategoryLabels } from '../types';
-import { scanReceipt } from '../utils/receiptScan';
+import { Expense, ExpenseCategory, expenseCategoryLabels, PricingSettings } from '../types';
+import { scanReceipt, scanReceiptGemini } from '../utils/receiptScan';
 
 interface Props {
   expenses: Expense[];
+  settings?: PricingSettings;
   onUpdate: (expenses: Expense[]) => void;
 }
 
@@ -23,7 +24,8 @@ const emptyForm = {
   note: '',
 };
 
-export function Expenses({ expenses, onUpdate }: Props) {
+export function Expenses({ expenses, settings, onUpdate }: Props) {
+  const geminiKey = settings?.geminiApiKey?.trim() || '';
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -63,23 +65,49 @@ export function Expenses({ expenses, onUpdate }: Props) {
     setScanProgress(0);
     setScanError('');
     try {
-      const res = await scanReceipt(file, (p) => setScanProgress(p));
-      // מילוי אוטומטי של הטופס — היא מאשרת/מתקנת לפני שמירה
-      setForm((prev) => ({
-        ...prev,
-        amount: res.amount || prev.amount,
-        date: res.date || prev.date,
-        supplier: res.vendor || prev.supplier,
-        description: prev.description || res.vendor || 'קבלה סרוקה',
-      }));
-      setScanText(res.text.trim());
-      setEditingId(null);
-      setIsAdding(true);
-      scrollToForm();
-      if (!res.amount) setScanError('לא זוהה סכום אוטומטית — נא להזין ידנית.');
-    } catch (err) {
+      if (geminiKey) {
+        // סריקה חכמה עם AI (דיוק גבוה בעברית)
+        setScanProgress(0.4);
+        const res = await scanReceiptGemini(file, geminiKey);
+        setScanProgress(1);
+        setForm((prev) => ({
+          ...prev,
+          amount: res.amount || prev.amount,
+          date: res.date || prev.date,
+          supplier: res.vendor || prev.supplier,
+          description: res.description || prev.description || 'קבלה סרוקה',
+          category: (res.category || prev.category) as ExpenseCategory,
+        }));
+        setScanText('');
+        setEditingId(null);
+        setIsAdding(true);
+        scrollToForm();
+        if (!res.amount) setScanError('לא זוהה סכום — נא לבדוק ולהזין ידנית.');
+      } else {
+        // ללא מפתח AI — OCR מקומי (פחות מדויק בקבלות תרמיות)
+        const res = await scanReceipt(file, (p) => setScanProgress(p));
+        setForm((prev) => ({
+          ...prev,
+          amount: res.amount || prev.amount,
+          date: res.date || prev.date,
+          supplier: res.vendor || prev.supplier,
+          description: prev.description || 'קבלה סרוקה',
+        }));
+        setScanText(res.text.trim());
+        setEditingId(null);
+        setIsAdding(true);
+        scrollToForm();
+        setScanError(
+          'סריקה מקומית (ללא AI) — לרוב פחות מדויקת. להוספת זיהוי חכם: ⚙️ הגדרות → מפתח סריקת קבלות. בדקי את הסכום והתאריך.'
+        );
+      }
+    } catch (err: any) {
       console.error(err);
-      setScanError('הסריקה נכשלה. נסי שוב עם תמונה ברורה יותר, או הזיני ידנית.');
+      const msg = err?.message || '';
+      if (msg === 'INVALID_KEY') setScanError('מפתח ה-AI אינו תקין. בדקי אותו ב-⚙️ הגדרות.');
+      else if (msg === 'QUOTA') setScanError('חרגת ממכסת ה-AI לרגע. נסי שוב בעוד דקה.');
+      else if (msg === 'FORBIDDEN') setScanError('הגישה ל-AI נחסמה (בדקי הגבלת דומיין על המפתח).');
+      else setScanError('הסריקה נכשלה. נסי שוב עם תמונה ברורה יותר, או הזיני ידנית.');
     } finally {
       setScanning(false);
     }
@@ -192,11 +220,15 @@ export function Expenses({ expenses, onUpdate }: Props) {
         <div className="scan-overlay">
           <div className="scan-box">
             <div className="scan-spinner" />
-            <p className="scan-title">סורקת את הקבלה…</p>
+            <p className="scan-title">{geminiKey ? 'מזהה את הקבלה עם AI…' : 'סורקת את הקבלה…'}</p>
             <div className="scan-progress">
               <div className="scan-progress-bar" style={{ width: `${Math.round(scanProgress * 100)}%` }} />
             </div>
-            <p className="scan-hint">קוראת את הטקסט מהתמונה (עברית + אנגלית). הפעם הראשונה עשויה לקחת רגע.</p>
+            <p className="scan-hint">
+              {geminiKey
+                ? 'מנתחת את התמונה — סכום, תאריך, ספק וקטגוריה.'
+                : 'קוראת את הטקסט מהתמונה (עברית + אנגלית). הפעם הראשונה עשויה לקחת רגע.'}
+            </p>
           </div>
         </div>
       )}

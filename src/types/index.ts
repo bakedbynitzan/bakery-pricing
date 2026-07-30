@@ -46,6 +46,7 @@ export interface PricingSettings {
   profitMarginPercent: number; // אחוז רווח רצוי
   deliveryCost: number; // עלות משלוח ברירת מחדל
   overheadPercent: number; // אחוז הוצאות כלליות (חשמל, גז וכו')
+  geminiApiKey?: string; // מפתח Google Gemini לסריקת קבלות (AI)
 }
 
 export interface PricingResult {

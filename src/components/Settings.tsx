@@ -152,6 +152,40 @@ export function Settings({
           </button>
         </div>
 
+        {/* סריקת קבלות עם AI */}
+        <div className="settings-card">
+          <h3>📷 סריקת קבלות (AI)</h3>
+          <p className="description">
+            מאפשר לצלם קבלה בטאב "הוצאות" והמערכת תמלא אוטומטית סכום, תאריך וספק.
+            נדרש מפתח Google Gemini (יש שכבת חינם נדיבה).
+          </p>
+
+          <div className="form-group">
+            <label>מפתח Gemini API</label>
+            <input
+              type="password"
+              value={form.geminiApiKey || ''}
+              onChange={(e) => setForm({ ...form, geminiApiKey: e.target.value })}
+              placeholder="הדביקי כאן את המפתח (AIza...)"
+              autoComplete="off"
+            />
+          </div>
+
+          <details className="settings-help">
+            <summary>איך משיגים מפתח? (חינם)</summary>
+            <ol>
+              <li>נכנסים ל־<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a> ומתחברים עם חשבון Google.</li>
+              <li>לוחצים "Create API key" ומעתיקים את המפתח.</li>
+              <li>מדביקים כאן ולוחצים "שמור הגדרות".</li>
+              <li>מומלץ להגביל את המפתח לדומיין <code>bakedbynitzan.github.io</code> (Application restrictions → HTTP referrers) כדי שיהיה בטוח.</li>
+            </ol>
+          </details>
+
+          <button onClick={handleSettingsSave} className="btn btn-primary">
+            שמור הגדרות
+          </button>
+        </div>
+
         {/* ניהול אריזות */}
         <div className="settings-card">
           <h3>📦 סוגי אריזה</h3>

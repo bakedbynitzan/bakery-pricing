@@ -8,6 +8,115 @@ export interface ParsedReceipt {
   vendor: string;
 }
 
+export type ExpenseCat = 'ingredients' | 'fixed' | 'equipment' | 'other';
+
+export interface GeminiReceipt {
+  amount: string;
+  date: string;
+  vendor: string;
+  description: string;
+  category: ExpenseCat | '';
+}
+
+// המרת קובץ תמונה ל-base64 (עם הקטנה) עבור שליחה ל-AI
+function fileToBase64(file: File, maxWidth = 1600, quality = 0.85): Promise<{ base64: string; mime: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('canvas'));
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg' });
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// סריקת קבלה באמצעות Google Gemini (דיוק גבוה, כולל עברית)
+export async function scanReceiptGemini(file: File, apiKey: string): Promise<GeminiReceipt> {
+  const { base64, mime } = await fileToBase64(file);
+  const model = 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const prompt = [
+    'אתה קורא קבלות/חשבוניות בעברית מישראל.',
+    'חלץ מהתמונה את הפרטים הבאים והחזר JSON בלבד:',
+    '- amount: הסכום הסופי ששולם (השורה "לתשלום" / "סה\\"כ"), כמספר בלבד ללא סימן מטבע.',
+    '- date: תאריך הקנייה בפורמט YYYY-MM-DD.',
+    '- vendor: שם העסק/החנות.',
+    '- description: תיאור קצר (שם העסק או הפריטים העיקריים).',
+    '- category: אחת מהערכים: ingredients (חומרי גלם/מכולת/אפייה), fixed (הוצאות קבועות), equipment (ציוד/כלים), other.',
+    'אם שדה לא ברור, החזר מחרוזת ריקה. אל תמציא ערכים.',
+  ].join('\n');
+
+  const body = {
+    contents: [
+      {
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mime, data: base64 } },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0,
+      responseMimeType: 'application/json',
+    },
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    if (res.status === 400 && /API key not valid/i.test(errText)) throw new Error('INVALID_KEY');
+    if (res.status === 429) throw new Error('QUOTA');
+    if (res.status === 403) throw new Error('FORBIDDEN');
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  const text: string = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  let parsed: any = {};
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // לפעמים המודל עוטף ב-```json ... ``` — ננקה ונְנַסה שוב
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) parsed = JSON.parse(m[0]);
+  }
+
+  const amountNum = typeof parsed.amount === 'number'
+    ? parsed.amount
+    : parseFloat(String(parsed.amount ?? '').replace(/[^\d.]/g, ''));
+  const validCats: ExpenseCat[] = ['ingredients', 'fixed', 'equipment', 'other'];
+  const category = validCats.includes(parsed.category) ? parsed.category : '';
+
+  return {
+    amount: isFinite(amountNum) && amountNum > 0 ? String(amountNum) : '',
+    date: /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : '',
+    vendor: (parsed.vendor || '').toString().slice(0, 60),
+    description: (parsed.description || parsed.vendor || '').toString().slice(0, 80),
+    category,
+  };
+}
+
 // דחיסת תמונה לפני OCR — מאיצה ומשפרת זיהוי במובייל
 function fileToCanvasDataUrl(file: File, maxWidth = 1600, quality = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {

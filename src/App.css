@@ -3237,3 +3237,9 @@ html, body {
   .header-actions { width: 100%; }
   .header-actions .btn { flex: 1; }
 }
+
+.settings-help { margin: 0.5rem 0 1rem; font-size: 0.85rem; color: var(--text-light); }
+.settings-help summary { cursor: pointer; color: var(--primary); font-weight: 500; }
+.settings-help ol { margin: 0.6rem 0 0; padding-inline-start: 1.2rem; line-height: 1.6; }
+.settings-help a { color: var(--primary); }
+.settings-help code { background: var(--primary-light); padding: 0.05rem 0.35rem; border-radius: 4px; }
