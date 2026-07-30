@@ -46,10 +46,11 @@ function fileToBase64(file: File, maxWidth = 1600, quality = 0.85): Promise<{ ba
 }
 
 // סריקת קבלה באמצעות Google Gemini (דיוק גבוה, כולל עברית)
+// רשימת מודלים לניסיון לפי סדר — עמידות לשינויי זמינות/מכסה
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'];
+
 export async function scanReceiptGemini(file: File, apiKey: string): Promise<GeminiReceipt> {
   const { base64, mime } = await fileToBase64(file);
-  const model = 'gemini-2.0-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const prompt = [
     'אתה קורא קבלות/חשבוניות בעברית מישראל.',
@@ -77,21 +78,28 @@ export async function scanReceiptGemini(file: File, apiKey: string): Promise<Gem
     },
   };
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
+  // ניסיון לפי סדר המודלים; אם אחד נכשל במכסה/זמינות (404/429) — עוברים לבא
+  let json: any = null;
+  let lastErr: Error | null = null;
+  for (const model of GEMINI_MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      json = await res.json();
+      break;
+    }
     const errText = await res.text().catch(() => '');
     if (res.status === 400 && /API key not valid/i.test(errText)) throw new Error('INVALID_KEY');
-    if (res.status === 429) throw new Error('QUOTA');
     if (res.status === 403) throw new Error('FORBIDDEN');
-    throw new Error(`HTTP ${res.status}`);
+    // 404 (מודל לא זמין) או 429 (מכסה) — ננסה את המודל הבא
+    lastErr = new Error(res.status === 429 ? 'QUOTA' : `HTTP ${res.status}`);
   }
+  if (!json) throw lastErr || new Error('HTTP 500');
 
-  const json = await res.json();
   const text: string = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   let parsed: any = {};
   try {
