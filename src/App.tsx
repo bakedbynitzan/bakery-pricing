@@ -188,7 +188,9 @@ function App() {
           <Expenses
             expenses={data.expenses || []}
             settings={data.settings}
+            ingredients={data.ingredients || []}
             onUpdate={updateExpenses}
+            onUpdateIngredients={updateIngredients}
           />
         )}
         {activeTab === 'receipts' && (

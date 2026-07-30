@@ -3240,11 +3240,23 @@ html, body {
 
 /* פריטים מקבלה סרוקה — בטופס */
 .scanned-items-group .scanned-items-list { list-style: none; margin: 0.4rem 0 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-.scanned-item-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 0.6rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+.scanned-item-row { display: grid; grid-template-columns: 1fr auto auto auto auto; align-items: center; gap: 0.6rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
 .scanned-item-row:last-child { border-bottom: none; }
+.scanned-item-main { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
 .scanned-item-name { font-size: 0.9rem; }
 .scanned-item-qty { color: var(--text-light); font-size: 0.85rem; }
 .scanned-item-total { font-weight: 600; font-size: 0.9rem; }
+
+/* תגי שינוי מחיר */
+.price-chg { font-size: 0.72rem; font-weight: 600; border-radius: 6px; padding: 0.05rem 0.4rem; width: fit-content; }
+.price-chg.down { background: #e3f6e8; color: #1a7f3c; }
+.price-chg.up { background: #fdecea; color: #b3261e; }
+.price-chg.same { background: var(--primary-light); color: var(--text-light); }
+[data-theme="dark"] .price-chg.down { background: #17331f; color: #7ee0a0; }
+[data-theme="dark"] .price-chg.up { background: #3a1f1f; color: #ffb4b0; }
+.price-alert-summary { margin: 0.3rem 0 0.5rem; font-size: 0.85rem; font-weight: 600; color: var(--primary); }
+.item-msg { margin: 0.3rem 0 0.5rem; font-size: 0.85rem; color: #1a7f3c; background: #e3f6e8; border-radius: 8px; padding: 0.4rem 0.7rem; }
+[data-theme="dark"] .item-msg { background: #17331f; color: #7ee0a0; }
 
 /* פריטים מקבלה סרוקה — בכרטיס הוצאה */
 .expense-card { flex-direction: column; align-items: stretch; }
@@ -3252,7 +3264,7 @@ html, body {
 .expense-items { margin-top: 0.6rem; border-top: 1px dashed var(--border); padding-top: 0.5rem; }
 .expense-items-toggle { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 0.85rem; padding: 0; font-weight: 500; }
 .expense-items-list { list-style: none; margin: 0.5rem 0 0; padding: 0; }
-.expense-items-list li { display: grid; grid-template-columns: 1fr auto auto; gap: 0.6rem; padding: 0.3rem 0; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+.expense-items-list li { display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.6rem; align-items: center; padding: 0.3rem 0; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
 .expense-items-list li:last-child { border-bottom: none; }
 .expense-items-list .ei-qty { color: var(--text-light); }
 .expense-items-list .ei-total { font-weight: 600; }

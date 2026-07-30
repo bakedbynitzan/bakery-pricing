@@ -1,11 +1,14 @@
 import { useState, useMemo, useRef } from 'react';
-import { Expense, ExpenseCategory, ExpenseItem, expenseCategoryLabels, PricingSettings } from '../types';
+import { Expense, ExpenseCategory, ExpenseItem, Ingredient, expenseCategoryLabels, PricingSettings } from '../types';
 import { scanReceipt, scanReceiptGemini } from '../utils/receiptScan';
+import { comparePrice, unitPriceOf, guessUnit, normName, PriceChange } from '../utils/priceHistory';
 
 interface Props {
   expenses: Expense[];
   settings?: PricingSettings;
+  ingredients?: Ingredient[];
   onUpdate: (expenses: Expense[]) => void;
+  onUpdateIngredients?: (ingredients: Ingredient[]) => void;
 }
 
 const categoryIcons: Record<ExpenseCategory, string> = {
@@ -24,7 +27,7 @@ const emptyForm = {
   note: '',
 };
 
-export function Expenses({ expenses, settings, onUpdate }: Props) {
+export function Expenses({ expenses, settings, ingredients = [], onUpdate, onUpdateIngredients }: Props) {
   const geminiKey = settings?.geminiApiKey?.trim() || '';
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,6 +65,52 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
 
   const removeScannedItem = (index: number) => {
     setScannedItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const [itemMsg, setItemMsg] = useState('');
+  const flashMsg = (m: string) => {
+    setItemMsg(m);
+    setTimeout(() => setItemMsg(''), 4000);
+  };
+
+  // הוספת/עדכון חומר גלם מתוך שורת פריט בקבלה
+  const addItemToIngredients = (item: ExpenseItem, supplier?: string) => {
+    if (!onUpdateIngredients) return;
+    const qty = item.quantity && item.quantity > 0 ? item.quantity : 1;
+    const perUnit = unitPriceOf(item.total, item.quantity);
+    const key = normName(item.name);
+    const existing = ingredients.find((i) => normName(i.name) === key);
+    const now = Date.now();
+
+    if (existing) {
+      const oldPer = existing.pricePerUnit || 0;
+      const changeTxt = oldPer
+        ? ` (מחיר קודם ₪${oldPer.toFixed(2)}, חדש ₪${perUnit.toFixed(2)})`
+        : '';
+      if (!confirm(`"${existing.name}" כבר קיים בחומרי גלם. לעדכן את המחיר?${changeTxt}`)) return;
+      onUpdateIngredients(
+        ingredients.map((i) =>
+          i.id === existing.id
+            ? { ...i, packagePrice: item.total, packageQuantity: qty, pricePerUnit: perUnit, supplier: supplier || i.supplier, updatedAt: now }
+            : i
+        )
+      );
+      flashMsg(`✅ עודכן מחיר בחומרי גלם: ${existing.name}`);
+    } else {
+      const ing: Ingredient = {
+        id: crypto.randomUUID(),
+        name: item.name,
+        packagePrice: item.total,
+        packageQuantity: qty,
+        pricePerUnit: perUnit,
+        unit: guessUnit(item.name),
+        supplier: supplier || undefined,
+        createdAt: now,
+        updatedAt: now,
+      };
+      onUpdateIngredients([...ingredients, ing]);
+      flashMsg(`✅ נוסף לחומרי גלם: ${item.name} — אפשר לדייק יחידות בטאב 🥚 חומרים`);
+    }
   };
 
   const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,6 +248,27 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
     return { total, byCategory };
   }, [filtered]);
 
+  const priceBadge = (it: ExpenseItem): PriceChange | null =>
+    comparePrice(expenses, it.name, unitPriceOf(it.total, it.quantity), editingId || undefined);
+
+  const renderPriceBadge = (pc: PriceChange | null) => {
+    if (!pc) return null;
+    if (pc.dir === 'same') return <span className="price-chg same">➖ ללא שינוי</span>;
+    const cls = pc.dir === 'down' ? 'down' : 'up';
+    const arrow = pc.dir === 'down' ? '🔻' : '🔺';
+    const word = pc.dir === 'down' ? 'ירד' : 'התייקר';
+    return (
+      <span className={`price-chg ${cls}`}>
+        {arrow} {word} {Math.abs(pc.pct).toFixed(0)}% · היה ₪{pc.prev.toFixed(2)}
+      </span>
+    );
+  };
+
+  const changedCount = scannedItems.reduce((n, it) => {
+    const pc = priceBadge(it);
+    return pc && pc.dir !== 'same' ? n + 1 : n;
+  }, 0);
+
   const formatMonth = (m: string) => {
     const [y, mo] = m.split('-');
     return new Date(parseInt(y), parseInt(mo) - 1).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
@@ -292,17 +362,34 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
           {scannedItems.length > 0 && (
             <div className="form-group scanned-items-group">
               <label>🧾 פריטים מהקבלה ({scannedItems.length})</label>
+              {changedCount > 0 && (
+                <p className="price-alert-summary">🔔 {changedCount} פריטים שינו מחיר מאז הקנייה הקודמת</p>
+              )}
+              {itemMsg && <p className="item-msg">{itemMsg}</p>}
               <ul className="scanned-items-list">
                 {scannedItems.map((it, i) => (
                   <li key={i} className="scanned-item-row">
-                    <span className="scanned-item-name">{it.name}</span>
-                    {it.quantity ? <span className="scanned-item-qty">×{it.quantity}</span> : <span />}
+                    <div className="scanned-item-main">
+                      <span className="scanned-item-name">{it.name}</span>
+                      {renderPriceBadge(priceBadge(it))}
+                    </div>
+                    <span className="scanned-item-qty">{it.quantity ? `×${it.quantity}` : ''}</span>
                     <span className="scanned-item-total">₪{it.total.toLocaleString()}</span>
+                    {onUpdateIngredients && (
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        title="הוסף/עדכן בחומרי גלם"
+                        onClick={() => addItemToIngredients(it, form.supplier)}
+                      >
+                        ➕
+                      </button>
+                    )}
                     <button type="button" className="btn-icon" title="הסר שורה" onClick={() => removeScannedItem(i)}>❌</button>
                   </li>
                 ))}
               </ul>
-              <p className="hint">הפריטים נשמרים לצד ההוצאה לתיעוד. הסכום הכולל למעלה הוא מה שנכנס לחישובים.</p>
+              <p className="hint">➕ מוסיף פריט לחומרי גלם (ומעדכן מחיר אם כבר קיים). הסכום הכולל למעלה הוא מה שנכנס לחישובים.</p>
             </div>
           )}
 
@@ -395,6 +482,15 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
                           <span className="ei-name">{it.name}</span>
                           <span className="ei-qty">{it.quantity ? `×${it.quantity}` : ''}</span>
                           <span className="ei-total">₪{it.total.toLocaleString()}</span>
+                          {onUpdateIngredients && (
+                            <button
+                              className="btn-icon"
+                              title="הוסף/עדכן בחומרי גלם"
+                              onClick={() => addItemToIngredients(it, ex.supplier)}
+                            >
+                              ➕
+                            </button>
+                          )}
                         </li>
                       ))}
                     </ul>
