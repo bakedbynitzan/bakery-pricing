@@ -3024,6 +3024,25 @@ html, body {
 .receipt-signature-img { height: 70px; width: auto; object-fit: contain; }
 .receipt-signature-line { letter-spacing: 1px; }
 
+/* תצוגת קבלה במסך נייד — לגרום לקבלה להיכנס לרוחב המסך (רק תצוגה, לא הדפסה) */
+@media screen and (max-width: 768px) {
+  .receipt-overlay { padding: 0.5rem; align-items: flex-start; }
+  .receipt-modal { max-width: 100%; }
+  .receipt-toolbar { padding: 0.75rem; }
+  .receipt-toolbar-actions { width: 100%; }
+  .receipt-toolbar-actions .btn { flex: 1; }
+  .receipt-preview-title { font-size: 0.82rem; }
+  .receipt-print { padding: 1.1rem; }
+  .receipt-header { gap: 0.5rem; }
+  .receipt-business h2 { font-size: 1.05rem; }
+  .receipt-business p { font-size: 0.72rem; }
+  .receipt-title h1 { font-size: 1.35rem; letter-spacing: 1px; }
+  .receipt-customer { flex-direction: column; gap: 0.15rem; font-size: 0.85rem; }
+  .receipt-items th, .receipt-items td { padding: 0.35rem 0.25rem; font-size: 0.76rem; }
+  .receipt-total-value { font-size: 0.95rem; }
+  .receipt-signature-img { height: 55px; }
+}
+
 @media print {
   /* margin:0 מבטל את הכותרת/כותרת-תחתית שהדפדפן מוסיף (תאריך/שם/URL).
      הריפוד של הקבלה עצמה מספק את השוליים. */
