@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Expense, ExpenseCategory, expenseCategoryLabels, PricingSettings } from '../types';
+import { Expense, ExpenseCategory, ExpenseItem, expenseCategoryLabels, PricingSettings } from '../types';
 import { scanReceipt, scanReceiptGemini } from '../utils/receiptScan';
 
 interface Props {
@@ -37,6 +37,8 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
   const [scanError, setScanError] = useState('');
   const [scanText, setScanText] = useState('');
   const [showScanText, setShowScanText] = useState(false);
+  const [scannedItems, setScannedItems] = useState<ExpenseItem[]>([]);
+  const [expandedItems, setExpandedItems] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -50,11 +52,16 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
     setEditingId(null);
     setScanText('');
     setShowScanText(false);
+    setScannedItems([]);
   };
 
   const openScanner = () => {
     setScanError('');
     fileInputRef.current?.click();
+  };
+
+  const removeScannedItem = (index: number) => {
+    setScannedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,6 +85,7 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
           description: res.description || prev.description || 'קבלה סרוקה',
           category: (res.category || prev.category) as ExpenseCategory,
         }));
+        setScannedItems(res.items || []);
         setScanText('');
         setEditingId(null);
         setIsAdding(true);
@@ -119,11 +127,13 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
     const now = Date.now();
     const amount = parseFloat(form.amount) || 0;
 
+    const items = scannedItems.length ? scannedItems : undefined;
+
     if (editingId) {
       onUpdate(
         expenses.map((ex) =>
           ex.id === editingId
-            ? { ...ex, date: form.date, category: form.category, description: form.description, amount, supplier: form.supplier, note: form.note, updatedAt: now }
+            ? { ...ex, date: form.date, category: form.category, description: form.description, amount, supplier: form.supplier, note: form.note, items, updatedAt: now }
             : ex
         )
       );
@@ -136,6 +146,7 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
         amount,
         supplier: form.supplier,
         note: form.note,
+        items,
         createdAt: now,
         updatedAt: now,
       };
@@ -153,9 +164,11 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
       supplier: ex.supplier || '',
       note: ex.note || '',
     });
+    setScannedItems(ex.items || []);
+    setScanText('');
     setEditingId(ex.id);
     setIsAdding(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToForm();
   };
 
   const handleDelete = (id: string) => {
@@ -276,6 +289,23 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
               <input type="text" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} placeholder="שם הספק" />
             </div>
           </div>
+          {scannedItems.length > 0 && (
+            <div className="form-group scanned-items-group">
+              <label>🧾 פריטים מהקבלה ({scannedItems.length})</label>
+              <ul className="scanned-items-list">
+                {scannedItems.map((it, i) => (
+                  <li key={i} className="scanned-item-row">
+                    <span className="scanned-item-name">{it.name}</span>
+                    {it.quantity ? <span className="scanned-item-qty">×{it.quantity}</span> : <span />}
+                    <span className="scanned-item-total">₪{it.total.toLocaleString()}</span>
+                    <button type="button" className="btn-icon" title="הסר שורה" onClick={() => removeScannedItem(i)}>❌</button>
+                  </li>
+                ))}
+              </ul>
+              <p className="hint">הפריטים נשמרים לצד ההוצאה לתיעוד. הסכום הכולל למעלה הוא מה שנכנס לחישובים.</p>
+            </div>
+          )}
+
           <div className="form-group">
             <label>הערה (אופציונלי)</label>
             <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} />
@@ -329,23 +359,48 @@ export function Expenses({ expenses, settings, onUpdate }: Props) {
         <div className="expenses-list">
           {filtered.map((ex) => (
             <div key={ex.id} className="expense-card">
-              <div className="expense-main">
-                <span className="expense-icon">{categoryIcons[ex.category]}</span>
-                <div className="expense-info">
-                  <span className="expense-desc">{ex.description}</span>
-                  <span className="expense-meta">
-                    {new Date(ex.date).toLocaleDateString('he-IL')} · {expenseCategoryLabels[ex.category]}
-                    {ex.supplier && ` · ${ex.supplier}`}
-                  </span>
+              <div className="expense-row">
+                <div className="expense-main">
+                  <span className="expense-icon">{categoryIcons[ex.category]}</span>
+                  <div className="expense-info">
+                    <span className="expense-desc">{ex.description}</span>
+                    <span className="expense-meta">
+                      {new Date(ex.date).toLocaleDateString('he-IL')} · {expenseCategoryLabels[ex.category]}
+                      {ex.supplier && ` · ${ex.supplier}`}
+                    </span>
+                  </div>
+                </div>
+                <div className="expense-side">
+                  <span className="expense-amount">₪{ex.amount.toLocaleString()}</span>
+                  <div className="expense-actions">
+                    <button onClick={() => handleEdit(ex)} className="btn-icon" title="ערוך">✏️</button>
+                    <button onClick={() => handleDelete(ex.id)} className="btn-icon" title="מחק">🗑️</button>
+                  </div>
                 </div>
               </div>
-              <div className="expense-side">
-                <span className="expense-amount">₪{ex.amount.toLocaleString()}</span>
-                <div className="expense-actions">
-                  <button onClick={() => handleEdit(ex)} className="btn-icon" title="ערוך">✏️</button>
-                  <button onClick={() => handleDelete(ex.id)} className="btn-icon" title="מחק">🗑️</button>
+
+              {ex.items && ex.items.length > 0 && (
+                <div className="expense-items">
+                  <button
+                    type="button"
+                    className="expense-items-toggle"
+                    onClick={() => setExpandedItems(expandedItems === ex.id ? null : ex.id)}
+                  >
+                    🧾 {ex.items.length} פריטים {expandedItems === ex.id ? '▲' : '▼'}
+                  </button>
+                  {expandedItems === ex.id && (
+                    <ul className="expense-items-list">
+                      {ex.items.map((it, i) => (
+                        <li key={i}>
+                          <span className="ei-name">{it.name}</span>
+                          <span className="ei-qty">{it.quantity ? `×${it.quantity}` : ''}</span>
+                          <span className="ei-total">₪{it.total.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           ))}
         </div>

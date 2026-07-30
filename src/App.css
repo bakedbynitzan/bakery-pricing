@@ -3238,6 +3238,25 @@ html, body {
   .header-actions .btn { flex: 1; }
 }
 
+/* פריטים מקבלה סרוקה — בטופס */
+.scanned-items-group .scanned-items-list { list-style: none; margin: 0.4rem 0 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.scanned-item-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 0.6rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+.scanned-item-row:last-child { border-bottom: none; }
+.scanned-item-name { font-size: 0.9rem; }
+.scanned-item-qty { color: var(--text-light); font-size: 0.85rem; }
+.scanned-item-total { font-weight: 600; font-size: 0.9rem; }
+
+/* פריטים מקבלה סרוקה — בכרטיס הוצאה */
+.expense-card { flex-direction: column; align-items: stretch; }
+.expense-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+.expense-items { margin-top: 0.6rem; border-top: 1px dashed var(--border); padding-top: 0.5rem; }
+.expense-items-toggle { background: none; border: none; color: var(--primary); cursor: pointer; font-size: 0.85rem; padding: 0; font-weight: 500; }
+.expense-items-list { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.expense-items-list li { display: grid; grid-template-columns: 1fr auto auto; gap: 0.6rem; padding: 0.3rem 0; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+.expense-items-list li:last-child { border-bottom: none; }
+.expense-items-list .ei-qty { color: var(--text-light); }
+.expense-items-list .ei-total { font-weight: 600; }
+
 .settings-help { margin: 0.5rem 0 1rem; font-size: 0.85rem; color: var(--text-light); }
 .settings-help summary { cursor: pointer; color: var(--primary); font-weight: 500; }
 .settings-help ol { margin: 0.6rem 0 0; padding-inline-start: 1.2rem; line-height: 1.6; }

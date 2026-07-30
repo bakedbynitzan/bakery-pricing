@@ -10,12 +10,19 @@ export interface ParsedReceipt {
 
 export type ExpenseCat = 'ingredients' | 'fixed' | 'equipment' | 'other';
 
+export interface GeminiItem {
+  name: string;
+  quantity?: number;
+  total: number;
+}
+
 export interface GeminiReceipt {
   amount: string;
   date: string;
   vendor: string;
   description: string;
   category: ExpenseCat | '';
+  items: GeminiItem[];
 }
 
 // המרת קובץ תמונה ל-base64 (עם הקטנה) עבור שליחה ל-AI
@@ -60,7 +67,9 @@ export async function scanReceiptGemini(file: File, apiKey: string): Promise<Gem
     '- vendor: שם העסק/החנות.',
     '- description: תיאור קצר (שם העסק או הפריטים העיקריים).',
     '- category: אחת מהערכים: ingredients (חומרי גלם/מכולת/אפייה), fixed (הוצאות קבועות), equipment (ציוד/כלים), other.',
-    'אם שדה לא ברור, החזר מחרוזת ריקה. אל תמציא ערכים.',
+    '- items: מערך שורות הפריטים בקבלה. כל פריט: { "name": שם הפריט, "quantity": כמות (מספר, אם קיים), "total": סכום השורה (מספר) }.',
+    '  כלול רק שורות פריט אמיתיות — אל תכלול שורות הנחה/מבצע, מע"מ, או סיכומים.',
+    'אם שדה לא ברור, החזר מחרוזת ריקה (או מערך ריק). אל תמציא ערכים.',
   ].join('\n');
 
   const body = {
@@ -116,12 +125,29 @@ export async function scanReceiptGemini(file: File, apiKey: string): Promise<Gem
   const validCats: ExpenseCat[] = ['ingredients', 'fixed', 'equipment', 'other'];
   const category = validCats.includes(parsed.category) ? parsed.category : '';
 
+  const items: GeminiItem[] = Array.isArray(parsed.items)
+    ? parsed.items
+        .map((it: any) => {
+          const total = typeof it?.total === 'number' ? it.total : parseFloat(String(it?.total ?? '').replace(/[^\d.]/g, ''));
+          const qtyRaw = it?.quantity;
+          const quantity = typeof qtyRaw === 'number' ? qtyRaw : parseFloat(String(qtyRaw ?? '').replace(/[^\d.]/g, ''));
+          return {
+            name: (it?.name || '').toString().slice(0, 60).trim(),
+            quantity: isFinite(quantity) && quantity > 0 ? quantity : undefined,
+            total: isFinite(total) ? total : 0,
+          } as GeminiItem;
+        })
+        .filter((it: GeminiItem) => it.name)
+        .slice(0, 100)
+    : [];
+
   return {
     amount: isFinite(amountNum) && amountNum > 0 ? String(amountNum) : '',
     date: /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : '',
     vendor: (parsed.vendor || '').toString().slice(0, 60),
     description: (parsed.description || parsed.vendor || '').toString().slice(0, 80),
     category,
+    items,
   };
 }
 

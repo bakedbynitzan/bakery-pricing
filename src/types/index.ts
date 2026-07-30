@@ -126,6 +126,13 @@ export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
   other: 'אחר',
 };
 
+// שורת פריט מקבלה סרוקה
+export interface ExpenseItem {
+  name: string;
+  quantity?: number;
+  total: number;
+}
+
 export interface Expense {
   id: string;
   date: string; // YYYY-MM-DD
@@ -134,6 +141,7 @@ export interface Expense {
   amount: number;
   supplier?: string;
   note?: string;
+  items?: ExpenseItem[]; // פירוט פריטים מהקבלה (סריקת AI)
   createdAt: number;
   updatedAt: number;
 }
