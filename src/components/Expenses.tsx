@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Expense, ExpenseCategory, expenseCategoryLabels } from '../types';
+import { scanReceipt } from '../utils/receiptScan';
 
 interface Props {
   expenses: Expense[];
@@ -28,10 +29,60 @@ export function Expenses({ expenses, onUpdate }: Props) {
   const [form, setForm] = useState(emptyForm);
   const [filterMonth, setFilterMonth] = useState('all');
 
+  // סריקת קבלה (OCR)
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanError, setScanError] = useState('');
+  const [scanText, setScanText] = useState('');
+  const [showScanText, setShowScanText] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const scrollToForm = () => {
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+
   const resetForm = () => {
     setForm(emptyForm);
     setIsAdding(false);
     setEditingId(null);
+    setScanText('');
+    setShowScanText(false);
+  };
+
+  const openScanner = () => {
+    setScanError('');
+    fileInputRef.current?.click();
+  };
+
+  const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // לאפשר בחירה חוזרת של אותו קובץ
+    if (!file) return;
+    setScanning(true);
+    setScanProgress(0);
+    setScanError('');
+    try {
+      const res = await scanReceipt(file, (p) => setScanProgress(p));
+      // מילוי אוטומטי של הטופס — היא מאשרת/מתקנת לפני שמירה
+      setForm((prev) => ({
+        ...prev,
+        amount: res.amount || prev.amount,
+        date: res.date || prev.date,
+        supplier: res.vendor || prev.supplier,
+        description: prev.description || res.vendor || 'קבלה סרוקה',
+      }));
+      setScanText(res.text.trim());
+      setEditingId(null);
+      setIsAdding(true);
+      scrollToForm();
+      if (!res.amount) setScanError('לא זוהה סכום אוטומטית — נא להזין ידנית.');
+    } catch (err) {
+      console.error(err);
+      setScanError('הסריקה נכשלה. נסי שוב עם תמונה ברורה יותר, או הזיני ידנית.');
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -117,15 +168,56 @@ export function Expenses({ expenses, onUpdate }: Props) {
       <div className="section-header">
         <h2>🧾 הוצאות</h2>
         {!isAdding && (
-          <button onClick={() => setIsAdding(true)} className="btn btn-primary">
-            + הוצאה חדשה
-          </button>
+          <div className="header-actions">
+            <button onClick={openScanner} className="btn btn-scan" disabled={scanning}>
+              📷 סרקי קבלה
+            </button>
+            <button onClick={() => setIsAdding(true)} className="btn btn-primary">
+              + הוצאה חדשה
+            </button>
+          </div>
         )}
       </div>
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleReceiptFile}
+        style={{ display: 'none' }}
+      />
+
+      {scanning && (
+        <div className="scan-overlay">
+          <div className="scan-box">
+            <div className="scan-spinner" />
+            <p className="scan-title">סורקת את הקבלה…</p>
+            <div className="scan-progress">
+              <div className="scan-progress-bar" style={{ width: `${Math.round(scanProgress * 100)}%` }} />
+            </div>
+            <p className="scan-hint">קוראת את הטקסט מהתמונה (עברית + אנגלית). הפעם הראשונה עשויה לקחת רגע.</p>
+          </div>
+        </div>
+      )}
+
+      {scanError && !scanning && (
+        <div className="scan-error-banner">⚠️ {scanError}</div>
+      )}
+
+      <div ref={formRef} className="expense-form-anchor">
       {isAdding && (
         <form onSubmit={handleSubmit} className="form-card">
           <h3>{editingId ? 'עריכת הוצאה' : 'הוצאה חדשה'}</h3>
+          {scanText && (
+            <div className="scan-result-note">
+              <span className="scan-badge">📷 מולא מקבלה סרוקה — בדקי שהסכום והתאריך נכונים</span>
+              <button type="button" className="scan-toggle" onClick={() => setShowScanText((s) => !s)}>
+                {showScanText ? 'הסתר טקסט מזוהה' : 'הצג טקסט מזוהה'}
+              </button>
+              {showScanText && <pre className="scan-raw-text">{scanText}</pre>}
+            </div>
+          )}
           <div className="form-grid">
             <div className="form-group">
               <label>תאריך</label>
@@ -162,6 +254,7 @@ export function Expenses({ expenses, onUpdate }: Props) {
           </div>
         </form>
       )}
+      </div>
 
       <div className="filters-section">
         <div className="filters-row">
