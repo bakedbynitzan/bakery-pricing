@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Recipe,
   Ingredient,
@@ -36,6 +36,23 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
 
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [showIngredientDropdown, setShowIngredientDropdown] = useState(false);
+  const [viewingId, setViewingId] = useState<string | null>(null);
+
+  const formRef = useRef<HTMLDivElement>(null);
+  // גלילה חלקה לטופס בעת יצירה/עריכה (עובד גם כשהעמוד ארוך במובייל)
+  const scrollToForm = () => {
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
+
+  // סגירת תצוגה מהירה עם Escape
+  useEffect(() => {
+    if (!viewingId) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setViewingId(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [viewingId]);
 
   // סינון חומרי גלם לפי חיפוש
   const filteredIngredients = ingredients.filter((ing) =>
@@ -149,8 +166,13 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
     });
     setEditingId(recipe.id);
     setIsAdding(true);
-    // גלילה למעלה לטופס
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToForm();
+  };
+
+  const handleAddNew = () => {
+    resetForm();
+    setIsAdding(true);
+    scrollToForm();
   };
 
   const handleDelete = (id: string) => {
@@ -193,17 +215,26 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
     return ingredientsTotalCost(recipe.ingredients, ingredients);
   };
 
+  // המוצר האחרון שנוצר תמיד ראשון
+  const sortedRecipes = useMemo(
+    () => [...recipes].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)),
+    [recipes]
+  );
+
+  const viewingRecipe = recipes.find((r) => r.id === viewingId) || null;
+
   return (
     <div className="section">
       <div className="section-header">
         <h2>📖 מוצרים</h2>
         {!isAdding && (
-          <button onClick={() => setIsAdding(true)} className="btn btn-primary">
+          <button onClick={handleAddNew} className="btn btn-primary">
             + הוסף מוצר
           </button>
         )}
       </div>
 
+      <div className="recipe-form-anchor" ref={formRef}>
       {isAdding && (
         <form onSubmit={handleSubmit} className="form-card">
           <h3>{editingId ? 'עריכת מוצר' : 'הוספת מוצר חדש'}</h3>
@@ -458,6 +489,7 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
           </div>
         </form>
       )}
+      </div>
 
       {recipes.length === 0 ? (
         <div className="empty-state">
@@ -465,7 +497,7 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
         </div>
       ) : (
         <div className="recipes-grid">
-          {recipes.map((recipe) => {
+          {sortedRecipes.map((recipe) => {
             const totalCost = getRecipeTotalCost(recipe);
             const perUnitCost = totalCost / recipe.yield;
             return (
@@ -498,6 +530,9 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
                   )}
                 </div>
                 <div className="recipe-actions">
+                  <button onClick={() => setViewingId(recipe.id)} className="btn btn-small btn-view">
+                    👁️ מרכיבים
+                  </button>
                   <button onClick={() => handleDuplicate(recipe)} className="btn btn-small">
                     📋 שכפל
                   </button>
@@ -511,6 +546,83 @@ export function Recipes({ recipes, ingredients, onUpdate }: Props) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* תצוגה מהירה של מרכיבי המוצר (קריאה בלבד) */}
+      {viewingRecipe && (
+        <div className="recipe-view-overlay" onClick={() => setViewingId(null)}>
+          <div className="recipe-view-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="recipe-view-close" onClick={() => setViewingId(null)} aria-label="סגירה">
+              ×
+            </button>
+            <h3>{viewingRecipe.name}</h3>
+            <div className="recipe-view-meta">
+              <span className="category-badge">{categoryLabels[viewingRecipe.category]}</span>
+              <span>תפוקה: {viewingRecipe.yield} {viewingRecipe.yieldUnit}</span>
+              <span>זמן עבודה: {viewingRecipe.laborMinutes} דק׳</span>
+            </div>
+
+            {viewingRecipe.ingredients.length > 0 ? (
+              <table className="ingredients-table view-only">
+                <thead>
+                  <tr>
+                    <th>חומר גלם</th>
+                    <th>כמות</th>
+                    <th>עלות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewingRecipe.ingredients.map((ing, i) => {
+                    const { cost, valid } = ingredientCost(ing, ingredients);
+                    return (
+                      <tr key={i}>
+                        <td>{getIngredientName(ing.ingredientId)}</td>
+                        <td>{ing.quantity} {unitLabels[ing.unit]}</td>
+                        <td>{valid ? `₪${cost.toFixed(2)}` : '⚠️'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <p className="empty-hint">אין חומרי גלם למוצר זה.</p>
+            )}
+
+            <div className="recipe-view-costs">
+              <div className="cost-summary-row">
+                <span>סה"כ עלות חומרי גלם:</span>
+                <span className="cost-value">₪{getRecipeTotalCost(viewingRecipe).toFixed(2)}</span>
+              </div>
+              {viewingRecipe.yield > 1 && (
+                <div className="cost-summary-row highlight">
+                  <span>עלות ל{viewingRecipe.yieldUnit}:</span>
+                  <span className="cost-value">
+                    ₪{(getRecipeTotalCost(viewingRecipe) / viewingRecipe.yield).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {viewingRecipe.notes && (
+              <div className="recipe-view-notes">
+                <strong>הערות:</strong>
+                <p>{viewingRecipe.notes}</p>
+              </div>
+            )}
+
+            <div className="recipe-view-actions">
+              <button
+                className="btn btn-small btn-primary"
+                onClick={() => { const r = viewingRecipe; setViewingId(null); handleEdit(r); }}
+              >
+                ✏️ ערוך
+              </button>
+              <button className="btn btn-small btn-secondary" onClick={() => setViewingId(null)}>
+                סגור
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
