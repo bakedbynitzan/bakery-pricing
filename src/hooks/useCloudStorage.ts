@@ -1,10 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppData, PricingSettings, Expense, Receipt, Order } from '../types';
 
-const JSONBIN_API_KEY = '$2a$10$oZfLFV8vjYJgPdjv3gZK9O5OD2tUEsH30F7mZMQh4CDJqtrN3qIfq';
+const JSONBIN_API_KEY = '$2a$10$PSTs2kF8qojKIJVnN.0.ounSBL6Lk8Z6kf0hNlu2v0cJtOGAjGgmG';
 const JSONBIN_BIN_ID_KEY = 'bakery-jsonbin-id';
-const DEFAULT_BIN_ID = '697fcf97ae596e708f09e8ba';
-const SYNC_INTERVAL = 30000; // סנכרון כל 30 שניות
+const DEFAULT_BIN_ID = '6ac6c4adac6210605a1dbe34';
+// מראה מקומית: עותק אחרון של הנתונים ב-localStorage כרשת ביטחון
+// (אם הענן לא זמין — למשל מכסה שנגמרה — האפליקציה עדיין תראה נתונים)
+const LOCAL_MIRROR_KEY = 'bakery-data-mirror';
+
+function writeMirror(d: AppData) {
+  try { localStorage.setItem(LOCAL_MIRROR_KEY, JSON.stringify(d)); } catch { /* storage full/blocked */ }
+}
+function readMirror(): AppData | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_MIRROR_KEY);
+    return raw ? (JSON.parse(raw) as AppData) : null;
+  } catch { return null; }
+}
 
 const defaultSettings: PricingSettings = {
   laborCostPerHour: 50,
@@ -81,11 +93,20 @@ export function useCloudStorage() {
       }
 
       if (record) {
-        setData({
+        const merged = {
           ...defaultData,
           ...record,
           settings: { ...defaultSettings, ...record?.settings },
-        });
+        };
+        setData(merged);
+        writeMirror(merged); // שמירת עותק מקומי עדכני
+      } else {
+        // הענן לא נגיש (למשל מכסה שנגמרה) — נטען מהמראה המקומית אם קיימת
+        const mirror = readMirror();
+        if (mirror) {
+          setData({ ...defaultData, ...mirror, settings: { ...defaultSettings, ...mirror.settings } });
+          setSyncError('הענן אינו זמין כרגע — מוצגים נתונים מגיבוי מקומי');
+        }
       }
 
       localStorage.setItem(JSONBIN_BIN_ID_KEY, usedId);
@@ -134,6 +155,7 @@ export function useCloudStorage() {
   const updateData = useCallback((newData: AppData) => {
     lastLocalUpdate.current = Date.now();
     setData(newData);
+    writeMirror(newData); // עותק מקומי מיידי (עצמאי מהענן)
     saveToCloud(newData);
   }, [saveToCloud]);
 
@@ -251,6 +273,7 @@ export function useCloudStorage() {
           settings: { ...defaultSettings, ...result.record?.settings },
         };
         setData(newData);
+        writeMirror(newData); // עדכון המראה המקומית
         setLastSynced(new Date());
       }
     } catch (error) {
@@ -259,31 +282,25 @@ export function useCloudStorage() {
     if (!silent) setIsSyncing(false);
   }, [binId]);
 
-  // סנכרון אוטומטי כל 30 שניות
+  // סנכרון מונחה-אירועים (ללא polling מתמיד ששורף את מכסת הבקשות):
+  // מרעננים מהענן רק כשחוזרים לטאב / כשהוא נעשה גלוי שוב.
   useEffect(() => {
     if (!binId || !isLoaded) return;
 
-    const syncInterval = setInterval(() => {
-      // רק אם לא היה עדכון מקומי ב-5 שניות האחרונות
-      const timeSinceLastUpdate = Date.now() - lastLocalUpdate.current;
-      if (timeSinceLastUpdate > 5000) {
-        refreshFromCloud(true);
-      }
-    }, SYNC_INTERVAL);
-
-    return () => clearInterval(syncInterval);
-  }, [binId, isLoaded, refreshFromCloud]);
-
-  // סנכרון כשחוזרים לטאב (focus)
-  useEffect(() => {
-    const handleFocus = () => {
-      if (binId && isLoaded) {
-        refreshFromCloud(true);
-      }
+    const maybeRefresh = () => {
+      // דילוג אם היה עדכון מקומי ב-5 השניות האחרונות (למנוע דריסה)
+      if (Date.now() - lastLocalUpdate.current > 5000) refreshFromCloud(true);
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') maybeRefresh();
     };
 
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    window.addEventListener('focus', maybeRefresh);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('focus', maybeRefresh);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [binId, isLoaded, refreshFromCloud]);
 
   // ייצוא וייבוא
